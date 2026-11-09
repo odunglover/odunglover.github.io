@@ -443,25 +443,32 @@
           </div>
 
           <div id="role-status-bar" class="hidden bg-[#dff0d8] border border-[#b2dba1] text-[#2e7d32] rounded-2xl p-3.5 text-center text-sm shadow-sm">
-            <span>✏️ 지금은 네가 그림을 그릴 차례야!</span>
-          </div>
+          <span>✏️ 지금은 네가 그림을 그릴 차례야!</span>
         </div>
       </div>
     </section>
 
     <!-- 정답 / 라운드 종료 오버레이 모달 -->
     <div id="round-result-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
-      <div class="bg-[#fffdf7] border-4 border-[#e5d7c3] rounded-3xl p-6 max-w-lg w-full text-center relative shadow-2xl space-y-4 animate-slide-up">
-        <h3 id="round-result-title" class="text-2xl text-[#234d2b] font-black">🎉 정답을 맞췄어요!</h3>
+      <div class="bg-[#fffdf7] border-4 border-[#e5d7c3] rounded-3xl p-6 max-w-2xl w-full relative shadow-2xl space-y-4 animate-slide-up">
+        <h3 id="round-result-title" class="text-2xl sm:text-3xl text-[#234d2b] font-black text-center">🎉 정답을 맞췄어요!</h3>
         
-        <!-- 방금 그린 캔버스 썸네일 -->
-        <div class="w-full aspect-[4/3] bg-[#1c3b22] border-4 border-[#5c3a21] rounded-2xl overflow-hidden relative">
-          <canvas id="result-canvas-preview" class="w-full h-full"></canvas>
-        </div>
+        <!-- 좌우 2열 레이아웃: 왼쪽 캔버스, 오른쪽 안내 메시지 -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+          <!-- 왼쪽 캔버스 썸네일 -->
+          <div class="w-full aspect-[4/3] bg-[#1c3b22] border-4 border-[#5c3a21] rounded-2xl overflow-hidden relative shadow-md">
+            <canvas id="result-canvas-preview" class="w-full h-full"></canvas>
+          </div>
 
-        <div class="space-y-1">
-          <p id="round-result-solver" class="text-lg text-[#ff7a38] font-bold">OO님이 맞췄어요!</p>
-          <p id="round-result-keyword" class="text-base text-slate-700 font-bold">제시어는 [대한민국]이였답니다!</p>
+          <!-- 오른쪽 메시지 영역 -->
+          <div class="flex flex-col justify-center space-y-3 p-4 bg-[#fdfbf7] rounded-2xl border-2 border-[#e5d7c3] text-left">
+            <p id="round-result-solver" class="text-xl sm:text-2xl text-[#ff7a38] font-black leading-snug">
+              OO님이 맞추셨어요!
+            </p>
+            <p id="round-result-keyword" class="text-lg text-slate-700 font-bold leading-normal">
+              제시어는 [대한민국] 였답니다.
+            </p>
+          </div>
         </div>
 
         <div id="next-round-btn-container" class="pt-2">
@@ -509,7 +516,7 @@
     let canvas, ctx;
     let isDrawing = false;
     let currentColor = '#ffffff';
-    let currentLineWidth = 5;
+    let currentLineWidth = 2; // 얇고 정밀한 고해상도 펜으로 조정
     let timerInterval = null;
     let timerStarted = false;
     let remainingTime = 20;
@@ -523,10 +530,26 @@
       food: ["떡볶이", "김밥", "라면", "피자", "치킨", "아이스크림", "햄버거", "초콜릿", "사과"]
     };
 
+    // 캔버스 고해상도 DPI 보정 함수
+    function resizeCanvasResolution() {
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      if (ctx) {
+        ctx.scale(dpr, dpr);
+      }
+      redrawStrokes();
+    }
+
     window.addEventListener('DOMContentLoaded', () => {
       canvas = document.getElementById('game-canvas');
       if (canvas) {
         ctx = canvas.getContext('2d');
+        resizeCanvasResolution();
+        window.addEventListener('resize', resizeCanvasResolution);
+
         canvas.addEventListener('mousedown', startDrawing);
         canvas.addEventListener('mousemove', draw);
         canvas.addEventListener('mouseup', stopDrawing);
@@ -910,7 +933,6 @@
 
     // 🚀 교사 방에서 [게임 시작하기] 버튼 클릭시 실행
     async function startGameByTeacher() {
-      // 선생님 제외 학생(참여자) 2명 이상 조건 추가
       if (studentList.length < 2) {
         alert("게임 시작을 위해서는 선생님 외에 참여 학생이 최소 2명 이상 있어야 합니다!\n(현재 참여 학생: " + studentList.length + "명)");
         return;
@@ -968,6 +990,8 @@
 
     function setupGameScreen(data) {
       showScreen('screen-game');
+      setTimeout(resizeCanvasResolution, 100);
+
       document.getElementById('game-room-code-display').innerText = roomCode;
       document.getElementById('game-drawer-name-display').innerText = data.drawer || '미정';
       document.getElementById('status-current-drawer').innerText = data.drawer || '미정';
@@ -975,6 +999,8 @@
       
       const kwDisplay = document.getElementById('game-keyword-display');
       const chatInputContainer = document.getElementById('chat-input-container');
+      const chatInput = document.getElementById('chat-input');
+      const chatSendBtn = document.getElementById('chat-send-btn');
 
       if (isTeacher) {
         kwDisplay.innerText = data.keyword || '???';
@@ -983,9 +1009,34 @@
         chatInputContainer.classList.remove('hidden');
         if (studentName === data.drawer) {
           kwDisplay.innerText = `${data.keyword} (네가 그릴 차례!)`;
+          // 🚫 그리는 사람은 채팅금지 설정
+          if (chatInput) {
+            chatInput.disabled = true;
+            chatInput.placeholder = "🎨 그림을 그리는 중에는 채팅을 입력할 수 없습니다.";
+            chatInput.classList.add('bg-slate-100', 'cursor-not-allowed');
+          }
+          if (chatSendBtn) {
+            chatSendBtn.disabled = true;
+            chatSendBtn.classList.add('opacity-50', 'cursor-not-allowed');
+          }
         } else {
           kwDisplay.innerText = '???';
+          if (chatInput) {
+            chatInput.disabled = false;
+            chatInput.placeholder = "정답을 입력하세요...";
+            chatInput.classList.remove('bg-slate-100', 'cursor-not-allowed');
+          }
+          if (chatSendBtn) {
+            chatSendBtn.disabled = false;
+            chatSendBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+          }
         }
+      }
+
+      // 타이머 자동 시작 동기화
+      if (data.timerStarted && !timerStarted) {
+        timerStarted = true;
+        startLocalTimer();
       }
 
       const hintBox = document.getElementById('game-hint-box');
@@ -1043,15 +1094,22 @@
       return !isTeacher && roomData && roomData.drawer === studentName;
     }
 
+    function getCanvasCoordinates(e) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: (e.clientX - rect.left) / rect.width,
+        y: (e.clientY - rect.top) / rect.height
+      };
+    }
+
     function startDrawing(e) {
       if (!isCurrentDrawer() || (roomData && roomData.status !== 'playing')) return;
       isDrawing = true;
-      const rect = canvas.getBoundingClientRect();
-      const x = (e.clientX - rect.left) / canvas.width;
-      const y = (e.clientY - rect.top) / canvas.height;
+      const coords = getCanvasCoordinates(e);
 
+      const rect = canvas.getBoundingClientRect();
       ctx.beginPath();
-      ctx.moveTo(x * canvas.width, y * canvas.height);
+      ctx.moveTo(coords.x * rect.width, coords.y * rect.height);
 
       if (!timerStarted) {
         timerStarted = true;
@@ -1062,23 +1120,22 @@
         }
       }
 
-      pushStroke({ type: 'start', x, y, color: currentColor, width: currentLineWidth });
+      pushStroke({ type: 'start', x: coords.x, y: coords.y, color: currentColor, width: currentLineWidth });
     }
 
     function draw(e) {
       if (!isDrawing || !isCurrentDrawer()) return;
+      const coords = getCanvasCoordinates(e);
       const rect = canvas.getBoundingClientRect();
-      const x = (e.clientX - rect.left) / canvas.width;
-      const y = (e.clientY - rect.top) / canvas.height;
 
       ctx.strokeStyle = currentColor;
       ctx.lineWidth = currentLineWidth;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
-      ctx.lineTo(x * canvas.width, y * canvas.height);
+      ctx.lineTo(coords.x * rect.width, coords.y * rect.height);
       ctx.stroke();
 
-      pushStroke({ type: 'draw', x, y, color: currentColor, width: currentLineWidth });
+      pushStroke({ type: 'draw', x: coords.x, y: coords.y, color: currentColor, width: currentLineWidth });
     }
 
     function stopDrawing() {
@@ -1094,12 +1151,12 @@
 
     function setDrawColor(color) {
       currentColor = color;
-      currentLineWidth = 5;
+      currentLineWidth = 2; // 세밀하고 깔끔한 라인
     }
 
     function setEraserMode() {
       currentColor = '#1c3b22';
-      currentLineWidth = 20;
+      currentLineWidth = 16;
     }
 
     async function pushStroke(stroke) {
@@ -1117,13 +1174,14 @@
 
     function redrawStrokes() {
       if (!ctx || !canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const w = rect.width;
+      const h = rect.height;
+
       ctx.fillStyle = '#1c3b22';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, w, h);
 
       if (!roomData || !roomData.strokes) return;
-
-      const w = canvas.width;
-      const h = canvas.height;
 
       ctx.beginPath();
       roomData.strokes.forEach(s => {
@@ -1141,7 +1199,7 @@
           ctx.stroke();
         } else if (s.type === 'clear') {
           ctx.fillStyle = '#1c3b22';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.fillRect(0, 0, w, h);
           ctx.beginPath();
         }
       });
@@ -1171,13 +1229,18 @@
     }
 
     async function sendChat() {
+      if (isCurrentDrawer()) return; // 출제자 채팅 입력 차단
+
       const input = document.getElementById('chat-input');
       const text = input.value.trim();
       if (!text || !roomData) return;
 
       input.value = '';
 
-      const isCorrect = text === roomData.keyword;
+      // 공백 제거 후 퀴즈 정답 검사
+      const normalize = (str) => (str || '').replace(/\s+/g, '').toLowerCase();
+      const isCorrect = normalize(text) === normalize(roomData.keyword);
+
       const chatItem = {
         sender: studentName,
         text: text,
@@ -1197,7 +1260,8 @@
         }
       }
 
-      if (isCorrect && isTeacher) {
+      // 정답이면 라운드 종료 실행
+      if (isCorrect) {
         endRound(studentName, '정답!');
       }
     }
@@ -1249,6 +1313,9 @@
         } catch (e) {
           console.warn("End round error:", e);
         }
+      } else {
+        roomData = { ...roomData, ...updateData };
+        handleRoomDataUpdate(roomData);
       }
     }
 
@@ -1263,20 +1330,22 @@
 
       if (data.solver) {
         title.innerText = "🎉 정답을 맞췄어요!";
-        solver.innerText = `${data.solver}님이 맞췄어요!`;
+        solver.innerText = `${data.solver}님이 맞추셨어요!`;
       } else {
         title.innerText = "⏱️ 라운드가 종료되었어요!";
         solver.innerText = "아쉽게 아무도 맞추지 못했어요.";
       }
-      keyword.innerText = `제시어는 [${data.keyword}]였답니다!`;
+      keyword.innerText = `제시어는 [${data.keyword}] 였답니다.`;
 
+      // 캔버스 복사하여 왼쪽 팝업 썸네일에 고해상도로 렌더링
       setTimeout(() => {
         const previewCanvas = document.getElementById('result-canvas-preview');
         if (previewCanvas && canvas) {
-          previewCanvas.width = canvas.width;
-          previewCanvas.height = canvas.height;
+          const rect = previewCanvas.getBoundingClientRect();
+          previewCanvas.width = rect.width;
+          previewCanvas.height = rect.height;
           const pCtx = previewCanvas.getContext('2d');
-          pCtx.drawImage(canvas, 0, 0);
+          pCtx.drawImage(canvas, 0, 0, rect.width, rect.height);
         }
       }, 50);
 
