@@ -910,6 +910,12 @@
 
     // 🚀 교사 방에서 [게임 시작하기] 버튼 클릭시 실행
     async function startGameByTeacher() {
+      // 선생님 제외 학생(참여자) 2명 이상 조건 추가
+      if (studentList.length < 2) {
+        alert("게임 시작을 위해서는 선생님 외에 참여 학생이 최소 2명 이상 있어야 합니다!\n(현재 참여 학생: " + studentList.length + "명)");
+        return;
+      }
+
       let selectedKeyword = "대한민국";
       let categoryName = "기본";
 
@@ -932,8 +938,7 @@
         categoryName = catNames[catKey] || "일반";
       }
 
-      // 학생이 접속하지 않은 테스트 상황 대비
-      const activeDrawer = (studentList.length > 0) ? studentList[Math.floor(Math.random() * studentList.length)] : (teacherName || '선생님');
+      const activeDrawer = studentList[Math.floor(Math.random() * studentList.length)];
 
       const updateData = {
         status: 'playing',
@@ -1319,7 +1324,7 @@
         categoryName = catNames[catKey] || "일반";
       }
 
-      const activeDrawer = (studentList.length > 0) ? studentList[Math.floor(Math.random() * studentList.length)] : (teacherName || '선생님');
+      const randomDrawer = studentList[Math.floor(Math.random() * studentList.length)];
       const nextRoundNum = (roomData?.currentRound || 1) + 1;
 
       timerStarted = false;
@@ -1327,7 +1332,7 @@
       const updateData = {
         status: 'playing',
         currentRound: nextRoundNum,
-        drawer: activeDrawer,
+        drawer: randomDrawer,
         keyword: selectedKeyword,
         categoryName: categoryName,
         strokes: [],
@@ -1346,7 +1351,6 @@
       }
     }
 
-    // 글로벌 전역 바인딩
     window.showTeacherSetup = showTeacherSetup;
     window.showStudentSetup = showStudentSetup;
     window.resetHomeForm = resetHomeForm;
