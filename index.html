@@ -916,14 +916,15 @@
         roomUnsubscribe = onSnapshot(roomRef, (docSnap) => {
           if (docSnap.exists()) {
             const data = docSnap.data();
+            const prevStrokesCount = roomData ? (roomData.strokes || []).length : 0;
             roomData = data;
-            handleRoomDataUpdate(data);
+            handleRoomDataUpdate(data, prevStrokesCount);
           }
         });
       }
     }
 
-    function handleRoomDataUpdate(data) {
+    function handleRoomDataUpdate(data, prevStrokesCount = 0) {
       if (data.status === 'closed') {
         alert("선생님이 방을 종료하셨습니다.");
         if (roomUnsubscribe) roomUnsubscribe();
@@ -955,6 +956,11 @@
 
       if (data.status === 'playing') {
         setupGameScreen(data);
+        // 그림 실시간 동기화: 스트로크 배열 길이가 달라지면 캔버스 즉시 갱신
+        const currentStrokesCount = (data.strokes || []).length;
+        if (currentStrokesCount !== prevStrokesCount) {
+          redrawStrokes();
+        }
       } else if (data.status === 'round_ended') {
         showRoundResultModal(data);
       }
@@ -989,12 +995,12 @@
         categoryName = catNames[catKey] || "일반";
       }
 
-      const activeDrawer = studentList[Math.floor(Math.random() * studentList.length)];
+      const randomDrawer = studentList[Math.floor(Math.random() * studentList.length)];
 
       const updateData = {
         status: 'playing',
         currentRound: 1,
-        drawer: activeDrawer,
+        drawer: randomDrawer,
         keyword: selectedKeyword,
         categoryName: categoryName,
         strokes: [],
@@ -1011,14 +1017,40 @@
         } catch (err) {
           console.warn("게임 시작 처리 오류:", err);
         }
-      } else {
-        roomData = { ...roomData, ...updateData };
-        handleRoomDataUpdate(roomData);
+      }
+    }
+
+    let strokeThrottleTimeout = null;
+    let pendingStrokesBuffer = [];
+
+    async function pushStroke(stroke) {
+      if (!roomCode || !window.FirebaseApp || !window.FirebaseApp.db) return;
+      
+      const strokes = roomData.strokes || [];
+      strokes.push(stroke);
+      roomData.strokes = strokes;
+
+      if (stroke.type === 'clear') {
+        redrawStrokes();
+      }
+
+      pendingStrokesBuffer.push(stroke);
+
+      if (!strokeThrottleTimeout) {
+        strokeThrottleTimeout = setTimeout(async () => {
+          strokeThrottleTimeout = null;
+          try {
+            const { doc, updateDoc } = window.FirebaseApp;
+            const roomRef = doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode);
+            await updateDoc(roomRef, { strokes: roomData.strokes });
+          } catch (err) {
+            console.warn("Stroke sync error:", err);
+          }
+        }, 100);
       }
     }
 
     function setupGameScreen(data) {
-      // 다음 라운드로 진입하면 무조건 정답 결과 모달 숨김
       const resultModal = document.getElementById('round-result-modal');
       if (resultModal) resultModal.classList.add('hidden');
 
@@ -1039,7 +1071,6 @@
         kwDisplay.innerText = data.keyword || '???';
         chatInputContainer.classList.add('hidden');
 
-        // 선생님 최초 게임 진입 모달
         if (data.showIntro && introShownForRound !== `${data.currentRound}_teacher`) {
           introShownForRound = `${data.currentRound}_teacher`;
           document.getElementById('teacher-modal-keyword').innerText = data.keyword;
@@ -1073,7 +1104,6 @@
         }
       }
 
-      // 타이머 자동 시작 동기화
       if (data.timerStarted && !timerStarted) {
         timerStarted = true;
         startLocalTimer();
@@ -1191,7 +1221,6 @@
       currentLineWidth = 20;
     }
 
-    // 캔버스 실시간 상대 좌표 산출 함수
     function getCanvasCoordinates(e) {
       if (!canvas) return { x: 0, y: 0 };
       const rect = canvas.getBoundingClientRect();
@@ -1203,7 +1232,6 @@
       };
     }
 
-    // stroke 데이터 동기화 및 전 스트로크 렌더링 함수
     function redrawStrokes() {
       if (!ctx || !canvas) return;
       const rect = canvas.getBoundingClientRect();
@@ -1239,7 +1267,7 @@
 
     function setDrawColor(color) {
       currentColor = color;
-      currentLineWidth = 5; // 펜 두께 5px 유지
+      currentLineWidth = 5;
     }
 
     function startLocalTimer() {
@@ -1254,7 +1282,6 @@
         remainingTime--;
         updateTimerDisplay(remainingTime);
 
-        // LAST 10초 처리: 그림 그리기 막기
         if (remainingTime <= 10 && remainingTime > 0) {
           if (!isLastSpurt) {
             isLastSpurt = true;
@@ -1271,61 +1298,6 @@
           if (isTeacher) endRound(null, '시간 초과!');
         }
       }, 1000);
-    }
-
-    async function nextRoundByTeacher() {
-      const modal = document.getElementById('round-result-modal');
-      if (modal) modal.classList.add('hidden');
-
-      let selectedKeyword = "대한민국";
-      let categoryName = "기본";
-
-      if (gameSettings.keywordMode === 'custom') {
-        const raw = document.getElementById('custom-keywords-input').value.trim();
-        if (raw) {
-          const list = raw.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
-          if (list.length > 0) {
-            selectedKeyword = list[Math.floor(Math.random() * list.length)];
-            categoryName = "직접 입력";
-          }
-        }
-      } else {
-        const cats = gameSettings.categories.length > 0 ? gameSettings.categories : ["animal"];
-        const catKey = cats[Math.floor(Math.random() * cats.length)];
-        const pool = keywordPresets[catKey] || ["사과"];
-        selectedKeyword = pool[Math.floor(Math.random() * pool.length)];
-
-        const catNames = { animal: "동물/식물", object: "학용품/사물", history: "역사/문화재", food: "음식/간식" };
-        categoryName = catNames[catKey] || "일반";
-      }
-
-      const randomDrawer = studentList[Math.floor(Math.random() * studentList.length)];
-      const nextRoundNum = (roomData?.currentRound || 1) + 1;
-
-      timerStarted = false;
-      isLastSpurt = false;
-      document.getElementById('last-spurt-overlay').classList.add('hidden');
-
-      const updateData = {
-        status: 'playing',
-        currentRound: nextRoundNum,
-        drawer: randomDrawer,
-        keyword: selectedKeyword,
-        categoryName: categoryName,
-        strokes: [],
-        chat: [],
-        timerStarted: false,
-        showIntro: true
-      };
-
-      if (window.FirebaseApp && window.FirebaseApp.db) {
-        try {
-          const { doc, updateDoc } = window.FirebaseApp;
-          await updateDoc(doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode), updateData);
-        } catch (err) {
-          console.warn("다음 라운드 처리 오류:", err);
-        }
-      }
     }
 
     window.closeTeacherStartModal = closeTeacherStartModal;
@@ -1359,7 +1331,6 @@
         }
       }
 
-      // 정답이면 라운드 종료 실행
       if (isCorrect) {
         endRound(studentName, '정답!');
       }
@@ -1436,7 +1407,6 @@
       }
       keyword.innerText = `제시어는 [${data.keyword}] 였답니다.`;
 
-      // 캔버스 복사하여 왼쪽 팝업 썸네일에 고해상도로 렌더링
       setTimeout(() => {
         const previewCanvas = document.getElementById('result-canvas-preview');
         if (previewCanvas && canvas) {
