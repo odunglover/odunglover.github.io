@@ -213,7 +213,7 @@
           </h2>
           <p class="text-slate-500 text-sm sm:text-base">학생들이 들어오면 [게임 시작하기]를 눌러주세요.</p>
         </div>
-        <!-- 방 닫기 버튼 복구 -->
+        <!-- 방 닫기 버튼 -->
         <button onclick="closeRoomByTeacher()" class="px-4 py-2 bg-rose-100 text-rose-600 rounded-xl hover:bg-rose-200 text-sm font-bold cursor-pointer">
           🚪 방 닫기
         </button>
@@ -239,7 +239,7 @@
               <span class="text-xs sm:text-sm text-slate-400 w-full text-center py-2">아직 접속한 학생이 없습니다.</span>
             </div>
 
-            <!-- 대기실 게임 시작하기 버튼 복구 -->
+            <!-- 대기실 게임 시작하기 버튼 -->
             <button onclick="startGameByTeacher()" class="w-full py-4 bg-[#ff7a38] hover:bg-[#e86624] text-white text-xl sm:text-2xl rounded-2xl shadow-lg border-b-4 border-[#c74c10] transition flex items-center justify-center gap-2 cursor-pointer">
               <span>🚀</span> 게임 시작하기
             </button>
@@ -262,7 +262,7 @@
               </div>
             </div>
 
-            <!-- 👥 그리는 친구 선택 복구 -->
+            <!-- 👥 그리는 친구 선택 -->
             <div>
               <label class="block text-xs text-slate-600 mb-1.5 font-bold">👥 그리는 친구</label>
               <div id="painters-options" class="flex flex-wrap gap-2">
@@ -379,7 +379,7 @@
 
     <!-- 4. 인게임 화면 -->
     <section id="screen-game" class="hidden w-full max-w-6xl space-y-4 animate-slide-up relative">
-      <!-- 2초 출제자 팝업 안내 레이어 -->
+      <!-- 2초 출제자 팝업 안내 레이어 (라운드 시작 시 1회만 표시) -->
       <div id="drawer-intro-overlay" class="hidden absolute inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center rounded-3xl">
         <div class="bg-white border-4 border-[#ff7a38] rounded-3xl p-8 shadow-2xl text-center animate-bounce">
           <span class="text-5xl block mb-2">🎨</span>
@@ -539,7 +539,7 @@
       </div>
     </div>
 
-    <!-- 🏆 최종 시상식 모달 (모든 라운드 완료 시 시차 애니메이션) -->
+    <!-- 🏆 최종 시상식 모달 -->
     <div id="final-rank-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-lg z-50 flex items-center justify-center p-4">
       <div class="bg-[#fffdf7] border-4 border-[#ff7a38] rounded-3xl p-6 sm:p-8 max-w-lg w-full text-center relative shadow-2xl space-y-6 animate-slide-up">
         <div>
@@ -586,16 +586,16 @@
       </div>
     </div>
 
-    <!-- QR 코드 확대 모달 -->
+    <!-- QR 코드 확대 모달 (대형 QR 코드) -->
     <div id="qr-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
-      <div class="bg-[#fffdf7] border-4 border-[#e5d7c3] rounded-3xl p-6 max-w-sm w-full text-center relative shadow-2xl animate-slide-up">
+      <div class="bg-[#fffdf7] border-4 border-[#e5d7c3] rounded-3xl p-8 max-w-md w-full text-center relative shadow-2xl animate-slide-up space-y-4">
         <button onclick="closeQrModal()" class="absolute top-4 right-4 text-2xl text-slate-400 hover:text-slate-600">✖</button>
-        <h3 class="text-xl text-[#234d2b] mb-1">스마트폰으로 스캔하세요!</h3>
-        <div class="flex justify-center p-3 bg-white rounded-2xl border-2 border-[#d9c4a5] mb-3 shadow-inner">
+        <h3 class="text-2xl text-[#234d2b]">스마트폰으로 스캔하세요!</h3>
+        <div class="flex justify-center p-4 bg-white rounded-2xl border-2 border-[#d9c4a5] shadow-inner">
           <div id="modal-qrcode"></div>
         </div>
-        <div class="text-slate-600 text-xs">참여 방 코드</div>
-        <div id="modal-room-code" class="text-4xl text-[#ff7a38] tracking-widest font-black">----</div>
+        <div class="text-slate-600 text-sm">참여 방 코드</div>
+        <div id="modal-room-code" class="text-5xl text-[#ff7a38] tracking-widest font-black">----</div>
       </div>
     </div>
   </main>
@@ -607,9 +607,8 @@
     let roomCode = '';
     let studentList = [];
     let roomUnsubscribe = null;
-    let roomData = null; // roomData 변수를 상단 스코프에 선언
+    let roomData = null;
 
-    // 세부 설정 변수를 최상단 스코프에 미리 선언 (ReferenceError 해결)
     let gameSettings = { 
       totalRounds: 5, 
       painters: 1, 
@@ -627,10 +626,8 @@
     let timerInterval = null;
     let timerStarted = false;
     let remainingTime = 30;
-    let introShownForRound = null;
     let isLastSpurt = false;
 
-    // 대폭 풍부해진 제시어 카테고리 목록 (중복 완화 및 추가 카테고리)
     const keywordPresets = {
       animal: [
         "호랑이", "사자", "토끼", "강아지", "고양이", "코끼리", "기린", "펭귄", "장미", "해바라기",
@@ -677,7 +674,6 @@
       ]
     };
 
-    // 캔버스 코어 함수 (호이스팅 에러 방지를 위해 위쪽 선언)
     function getCanvasCoordinates(e) {
       if (!canvas) return { x: 0, y: 0 };
       const rect = canvas.getBoundingClientRect();
@@ -726,6 +722,7 @@
       return !isTeacher && typeof roomData !== 'undefined' && roomData && roomData.drawer === studentName;
     }
 
+    // ✏️ 출제자가 첫 획(마우스/터치 시작)을 그리는 순간 타이머가 시작되도록 연동
     function startDrawing(e) {
       if (!isCurrentDrawer() || (typeof roomData !== 'undefined' && roomData && roomData.status !== 'playing') || isLastSpurt) return;
       isDrawing = true;
@@ -768,7 +765,6 @@
       pushStroke({ type: 'end' });
     }
 
-    // 캔버스 컨트롤 함수
     function setDrawColor(color) {
       currentColor = color;
       currentLineWidth = 5;
@@ -784,7 +780,6 @@
       pushStroke({ type: 'clear' });
     }
 
-    // 캔버스 고해상도 반응형 보정
     function resizeCanvasResolution() {
       if (!canvas) return;
       const rect = canvas.getBoundingClientRect();
@@ -978,7 +973,7 @@
       const modal = document.getElementById('qr-modal');
       if (modal) {
         modal.classList.remove('hidden');
-        renderQrCode('modal-qrcode', roomCode);
+        renderQrCode('modal-qrcode', roomCode, 220); // 크게 확대된 크기 지정
       }
     }
 
@@ -987,7 +982,7 @@
       if (modal) modal.classList.add('hidden');
     }
 
-    function renderQrCode(containerId, text) {
+    function renderQrCode(containerId, text, size = 140) {
       const container = document.getElementById(containerId);
       if (!container) return;
       container.innerHTML = '';
@@ -999,14 +994,14 @@
         if (window.QRCode) {
           new QRCode(container, {
             text: targetUrl,
-            width: 140,
-            height: 140
+            width: size,
+            height: size
           });
         } else {
-          container.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(targetUrl)}" alt="QR Code" class="rounded-xl" />`;
+          container.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(targetUrl)}" alt="QR Code" class="rounded-xl" />`;
         }
       } catch (e) {
-        container.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(targetUrl)}" alt="QR Code" class="rounded-xl" />`;
+        container.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(targetUrl)}" alt="QR Code" class="rounded-xl" />`;
       }
     }
 
@@ -1027,7 +1022,7 @@
       showScreen('screen-teacher-lobby');
 
       setTimeout(() => {
-        renderQrCode('teacher-qrcode', roomCode);
+        renderQrCode('teacher-qrcode', roomCode, 140);
       }, 100);
 
       const initialScores = {};
@@ -1345,7 +1340,8 @@
       } else {
         chatInputContainer.classList.remove('hidden');
         if (studentName === data.drawer) {
-          kwDisplay.innerText = `${data.keyword} (네가 그릴 차례!)`;
+          // 📌 출제자 본인 화면 제시어 옆에 "(내가 그릴 차례!)" 표시
+          kwDisplay.innerHTML = `${data.keyword} <span class="text-rose-600 font-black text-base">(내가 그릴 차례!)</span>`;
           if (chatInput) {
             chatInput.disabled = true;
             chatInput.placeholder = "🎨 그림을 그리는 중에는 채팅을 입력할 수 없습니다.";
@@ -1408,13 +1404,18 @@
         }
       }
 
+      // 라운드 변경 시 1회만 인트로 팝업 표시하도록 제어
       const currentRoundKey = `${data.currentRound || 1}_${data.drawer}`;
-      if (data.showIntro && introShownForRound !== currentRoundKey && !isTeacher) {
+      if (data.showIntro && introShownForRound !== currentRoundKey) {
         introShownForRound = currentRoundKey;
         const overlay = document.getElementById('drawer-intro-overlay');
         const text = document.getElementById('drawer-intro-text');
         if (overlay && text) {
-          text.innerText = studentName === data.drawer ? "내가 그려야 해요! 🎨" : `${data.drawer}님이 그릴 수 있어요!`;
+          if (!isTeacher && studentName === data.drawer) {
+            text.innerText = "내가 그려야 해요! 🎨";
+          } else {
+            text.innerText = `${data.drawer}님이 그릴 수 있어요!`;
+          }
           overlay.classList.remove('hidden');
           setTimeout(() => {
             overlay.classList.add('hidden');
@@ -1740,7 +1741,6 @@
       }, 2500);
     }
 
-    // 전역 스코프 함수 바인딩
     window.showTeacherSetup = showTeacherSetup;
     window.showStudentSetup = showStudentSetup;
     window.resetHomeForm = resetHomeForm;
