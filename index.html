@@ -134,8 +134,8 @@
     </div>
 
     <div class="flex items-center gap-2">
-      <!-- 선생님 전용 강제 게임 종료 버튼 -->
-      <button id="teacher-force-end-btn" onclick="forceEndGameByTeacher()" class="hidden px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow transition flex items-center gap-1">
+      <!-- 선생님 전용 강제 게임 종료 버튼 (인게임 중에만JS 제어로 노출) -->
+      <button id="teacher-force-end-btn" onclick="forceEndGameByTeacher()" class="hidden px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow transition flex items-center gap-1 cursor-pointer">
         <span>🛑</span> 게임 종료
       </button>
 
@@ -213,7 +213,8 @@
           </h2>
           <p class="text-slate-500 text-sm sm:text-base">학생들이 들어오면 [게임 시작하기]를 눌러주세요.</p>
         </div>
-        <button onclick="closeRoomByTeacher()" class="px-4 py-2 bg-rose-100 text-rose-600 rounded-xl hover:bg-rose-200 text-sm font-bold">
+        <!-- 방 닫기 버튼 복구 -->
+        <button onclick="closeRoomByTeacher()" class="px-4 py-2 bg-rose-100 text-rose-600 rounded-xl hover:bg-rose-200 text-sm font-bold cursor-pointer">
           🚪 방 닫기
         </button>
       </div>
@@ -237,6 +238,11 @@
             <div id="student-list-container" class="flex flex-wrap gap-2 min-h-[80px] max-h-40 overflow-y-auto p-3 bg-[#fdfbf7] rounded-xl border border-dashed border-[#d9c4a5] items-center">
               <span class="text-xs sm:text-sm text-slate-400 w-full text-center py-2">아직 접속한 학생이 없습니다.</span>
             </div>
+
+            <!-- 대기실 게임 시작하기 버튼 복구 -->
+            <button onclick="startGameByTeacher()" class="w-full py-4 bg-[#ff7a38] hover:bg-[#e86624] text-white text-xl sm:text-2xl rounded-2xl shadow-lg border-b-4 border-[#c74c10] transition flex items-center justify-center gap-2 cursor-pointer">
+              <span>🚀</span> 게임 시작하기
+            </button>
           </div>
 
           <!-- 게임 세부 설정 영역 -->
@@ -1201,6 +1207,16 @@
       showScreen('screen-game');
       setTimeout(resizeCanvasResolution, 100);
 
+      // 게임 시작 시 선생님 화면 헤더에만 [🛑 게임 종료] 버튼 표시
+      const teacherEndBtn = document.getElementById('teacher-force-end-btn');
+      if (teacherEndBtn) {
+        if (isTeacher) {
+          teacherEndBtn.classList.remove('hidden');
+        } else {
+          teacherEndBtn.classList.add('hidden');
+        }
+      }
+
       document.getElementById('game-room-code-display').innerText = roomCode;
       document.getElementById('game-drawer-name-display').innerText = data.drawer || '미정';
       document.getElementById('status-current-drawer').innerText = data.drawer || '미정';
@@ -1466,11 +1482,25 @@
       }
 
       if (isCorrect) {
-        // 시간에 비례한 dynamic score (10 ~ 99점)
         const totalTimer = roomData?.settings?.timer || 30;
         const ratio = Math.max(0, Math.min(1, remainingTime / totalTimer));
         const earnedScore = Math.floor(10 + ratio * 89);
         endRound(studentName, '정답!', earnedScore);
+      }
+    }
+
+    function showScreen(screenId) {
+      ['screen-home', 'screen-teacher-lobby', 'screen-student-lobby', 'screen-game'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+      });
+      const target = document.getElementById(screenId);
+      if (target) target.classList.remove('hidden');
+
+      // 게임 화면(screen-game)이 아닐 때는 헤더의 게임 종료 버튼 숨김
+      const teacherEndBtn = document.getElementById('teacher-force-end-btn');
+      if (teacherEndBtn && screenId !== 'screen-game') {
+        teacherEndBtn.classList.add('hidden');
       }
     }
 
