@@ -1185,10 +1185,13 @@
         return;
       }
 
-      if (data.status === 'lobby' && !isTeacher) {
+      // 📌 대기실로 게임 재시작(status === 'lobby')을 한 경우 최종 결과 모달을 닫고 대기실 화면으로 동기화
+      if (data.status === 'lobby') {
         const finalModal = document.getElementById('final-rank-modal');
         if (finalModal) finalModal.classList.add('hidden');
-        showScreen('screen-student-lobby');
+        if (!isTeacher) {
+          showScreen('screen-student-lobby');
+        }
       }
 
       if (data.teacherName && !isTeacher) {
@@ -1339,6 +1342,17 @@
       document.getElementById('game-round-info').innerText = `${data.currentRound || 1} / ${data.settings?.totalRounds || 5}`;
 
       renderScoreboard(data.scores);
+      // 📌 새 라운드 시작 시 타이머 초기화 (선생님이 설정한 선택 시간으로 완벽 연동)
+      if (!data.timerStarted) {
+        if (timerInterval) {
+          clearInterval(timerInterval);
+          timerInterval = null;
+        }
+        timerStarted = false;
+        // 선택한 게임 설정을 우선 가져오고, 없으면 기본값 30초 사용
+        remainingTime = (data.settings && data.settings.timer) ? data.settings.timer : (gameSettings.timer || 30);
+        updateTimerDisplay(remainingTime);
+      }
 
       const kwDisplay = document.getElementById('game-keyword-display');
       const chatInputContainer = document.getElementById('chat-input-container');
@@ -1349,10 +1363,11 @@
         kwDisplay.innerText = data.keyword || '???';
         chatInputContainer.classList.add('hidden');
 
+        // 📌 선생님용 라운드 시작 팝업: 라운드당 오직 1번만 뜨도록 처리
         const teacherRoundKey = `round_${data.currentRound || 1}`;
         if (data.showIntro && introShownForRound !== teacherRoundKey) {
           introShownForRound = teacherRoundKey;
-          data.showIntro = false;
+          data.showIntro = false; // local 객체 상태 변경으로 중복 노출 차단
           document.getElementById('teacher-modal-keyword').innerText = data.keyword;
           document.getElementById('teacher-modal-drawer').innerText = data.drawer;
           document.getElementById('teacher-start-modal').classList.remove('hidden');
@@ -1452,7 +1467,8 @@
 
     function startLocalTimer() {
       if (timerInterval) clearInterval(timerInterval);
-      remainingTime = roomData?.settings?.timer || 30;
+      // 선택한 게임 시간 설정값 반영
+      remainingTime = (roomData && roomData.settings && roomData.settings.timer) ? roomData.settings.timer : (gameSettings.timer || 30);
       updateTimerDisplay(remainingTime);
 
       isLastSpurt = false;
