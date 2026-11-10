@@ -245,6 +245,7 @@
         <div class="md:col-span-7 space-y-6">
           <div class="bg-white border-2 border-[#e5d7c3] rounded-2xl p-5 shadow-sm space-y-4">
             <h3 class="text-lg text-[#234d2b] font-black">참여 학생 목록 (<span id="connected-count" class="text-[#ff7a38]">0</span>명)</h3>
+            <p class="text-xs text-slate-400 font-bold">💡 학생 이름을 클릭하면 추방할 수 있습니다.</p>
             <div id="student-list-container" class="flex flex-wrap gap-2 min-h-[80px] max-h-40 overflow-y-auto p-3 bg-[#fdfbf7] rounded-xl border border-dashed border-[#d9c4a5] items-center">
               <span class="text-xs sm:text-sm text-slate-400 w-full text-center py-2">아직 접속한 학생이 없습니다.</span>
             </div>
@@ -409,8 +410,6 @@
             <span id="game-room-code-display" class="text-[#ffe082]">1234</span>
           </div>
         </div>
-
-        <!-- 📌 인게임 상단 스코어보드 바 제거됨 -->
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
@@ -719,7 +718,6 @@
       ctx.beginPath();
       ctx.moveTo(coords.x * rect.width, coords.y * rect.height);
 
-      // 출제자가 처음 한 획을 그릴 때 본인 로컬 타이머를 즉시 작동시키고, 전원 동기화
       if (!timerStarted && typeof roomData !== 'undefined' && !roomData.timerStarted) {
         timerStarted = true;
         startLocalTimer();
@@ -1135,6 +1133,28 @@
       goHome();
     }
 
+    async function confirmKickStudent(targetStudent) {
+      if (!isTeacher) return;
+      if (!confirm(`'${targetStudent}' 학생을 정말 추방하시겠습니까?`)) return;
+
+      if (window.FirebaseApp && window.FirebaseApp.db && roomCode) {
+        try {
+          const { doc, getDoc, updateDoc } = window.FirebaseApp;
+          const roomRef = doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode);
+          const snap = await getDoc(roomRef);
+          if (snap.exists()) {
+            let list = snap.data().students || [];
+            let scores = snap.data().scores || {};
+            list = list.filter(s => s !== targetStudent);
+            delete scores[targetStudent];
+            await updateDoc(roomRef, { students: list, scores: scores });
+          }
+        } catch (err) {
+          console.warn("학생 추방 오류:", err);
+        }
+      }
+    }
+
     function listenRoomData(code) {
       if (window.FirebaseApp && window.FirebaseApp.db) {
         const { doc, onSnapshot } = window.FirebaseApp;
@@ -1158,7 +1178,13 @@
         return;
       }
 
-      // 선생님이 대기실로 게임 재시작(status === 'lobby')을 한 경우 학생들도 대기실 화면으로 동기화
+      if (!isTeacher && studentName && data.students && !data.students.includes(studentName)) {
+        alert("선생님에 의해 방에서 추방되었습니다.");
+        if (roomUnsubscribe) roomUnsubscribe();
+        goHome();
+        return;
+      }
+
       if (data.status === 'lobby' && !isTeacher) {
         const finalModal = document.getElementById('final-rank-modal');
         if (finalModal) finalModal.classList.add('hidden');
@@ -1179,9 +1205,10 @@
             container.innerHTML = '<span class="text-xs sm:text-sm text-slate-400 w-full text-center py-2">아직 접속한 학생이 없습니다.</span>';
           } else {
             container.innerHTML = studentList.map(s => `
-              <span class="px-3 py-1.5 bg-[#e8f5e9] text-[#2e7d32] rounded-xl text-xs sm:text-sm font-bold border border-[#a5d6a7]">
-                👤 ${s}
-              </span>
+              <button type="button" onclick="confirmKickStudent('${s}')" class="px-3 py-1.5 bg-[#e8f5e9] hover:bg-rose-100 text-[#2e7d32] hover:text-rose-600 rounded-xl text-xs sm:text-sm font-bold border border-[#a5d6a7] hover:border-rose-300 transition flex items-center gap-1 cursor-pointer group">
+                <span>👤 ${s}</span>
+                <span class="text-xs opacity-0 group-hover:opacity-100 text-rose-500 ml-1">🚫 추방</span>
+              </button>
             `).join('');
           }
         }
@@ -1295,7 +1322,6 @@
     }
 
     function renderScoreboard(scores) {
-      // 인게임 상단 참여자 옆 점수 표시 바 완전히 안 보이도록 숨김
       const board = document.getElementById('game-scoreboard');
       if (board) board.innerHTML = '';
     }
@@ -1323,12 +1349,11 @@
         kwDisplay.innerText = data.keyword || '???';
         chatInputContainer.classList.add('hidden');
 
-        // 선생님용 라운드 시작 팝업: 라운드당 오직 1번만 뜨도록 라운드 번호 기반 체크
         const teacherRoundKey = `round_${data.currentRound || 1}`;
         if (data.showIntro && introShownForRound !== teacherRoundKey) {
           introShownForRound = teacherRoundKey;
           document.getElementById('teacher-modal-keyword').innerText = data.keyword;
-          document.getElementById('teacher-modal-[#drawer]' ? 'teacher-modal-drawer' : 'teacher-modal-drawer').innerText = data.drawer;
+          document.getElementById('teacher-modal-drawer').innerText = data.drawer;
           document.getElementById('teacher-start-modal').classList.remove('hidden');
         }
       } else {
@@ -1358,7 +1383,6 @@
         }
       }
 
-      // 서버에서 timerStarted = true 신호가 오면 모든 사용자가 동일한 타이머 시작
       if (data.timerStarted && !timerStarted) {
         timerStarted = true;
         startLocalTimer();
@@ -1438,7 +1462,6 @@
         if (remainingTime > 0) {
           updateTimerDisplay(remainingTime);
         } else if (remainingTime <= 0 && !isLastSpurt) {
-          // 원래 시간을 다 썼을 때 10초 보너스 시간(LAST 10초) 시작!
           isLastSpurt = true;
           remainingTime = 10;
           updateTimerDisplay(remainingTime);
@@ -1447,7 +1470,6 @@
           if (palette) palette.classList.add('opacity-40', 'pointer-events-none');
           stopDrawing();
         } else if (remainingTime <= 0 && isLastSpurt) {
-          // 보너스 10초까지 모두 종료된 경우
           clearInterval(timerInterval);
           document.getElementById('last-spurt-overlay').classList.add('hidden');
           if (isTeacher) endRound(null, '시간 초과!', 0);
@@ -1607,7 +1629,6 @@
       const totalRounds = data.settings?.totalRounds || 5;
       const isLastRound = currentRoundNum >= totalRounds;
 
-      // 📌 마지막 라운드인 경우 버튼을 '최종 랭킹 보기'로 변경
       if (isLastRound) {
         actionBtn.innerText = "🏆 최종 랭킹 보기";
         actionBtn.onclick = async () => {
@@ -1720,7 +1741,6 @@
       if (!modal) return;
       modal.classList.remove('hidden');
 
-      // 📌 선생님이면 버튼을 "새 게임 하기"로, 학생이면 "메인 화면으로 돌아가기"로 분기
       const finalActionBtn = document.getElementById('final-action-btn');
       if (finalActionBtn) {
         if (isTeacher) {
@@ -1765,13 +1785,11 @@
       }, 2500);
     }
 
-    // 📌 최종 발표창 하단 버튼 액션 분기 처리 함수
     async function handleFinalAction() {
       const modal = document.getElementById('final-rank-modal');
       if (modal) modal.classList.add('hidden');
 
       if (isTeacher) {
-        // 선생님: 새 게임 하기 -> 접속한 플레이어 목록은 유지한 채 점수를 0점으로 완전히 리셋 후 대기실 복귀
         const resetScores = {};
         studentList.forEach(s => { resetScores[s] = 0; });
 
@@ -1793,7 +1811,6 @@
         }
         showScreen('screen-teacher-lobby');
       } else {
-        // 학생: 메인 화면으로 돌아가기 (방 나가기 및 홈 화면으로)
         await leaveRoom();
       }
     }
@@ -1807,6 +1824,7 @@
     window.forceEndGameByTeacher = forceEndGameByTeacher;
     window.closeTeacherStartModal = closeTeacherStartModal;
     window.leaveRoom = leaveRoom;
+    window.confirmKickStudent = confirmKickStudent;
     window.goHome = goHome;
     window.selectRounds = selectRounds;
     window.selectPainters = selectPainters;
