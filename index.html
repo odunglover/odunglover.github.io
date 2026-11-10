@@ -399,7 +399,7 @@
           </div>
         </div>
 
-        <div id="game-scoreboard" class="flex flex-wrap gap-2 pt-2 border-t border-[#3b6643] text-xs"></div>
+        <!-- 📌 인게임 상단 스코어보드 바 제거됨 -->
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
@@ -1146,6 +1146,13 @@
         return;
       }
 
+      // 선생님이 대기실로 게임 재시작(status === 'lobby')을 한 경우 학생들도 대기실 화면으로 동기화
+      if (data.status === 'lobby' && !isTeacher) {
+        const finalModal = document.getElementById('final-rank-modal');
+        if (finalModal) finalModal.classList.add('hidden');
+        showScreen('screen-student-lobby');
+      }
+
       if (data.teacherName && !isTeacher) {
         document.getElementById('student-waiting-teacher-title').innerText = `${data.teacherName}의 방에 접속하였습니다.`;
       }
@@ -1276,18 +1283,9 @@
     }
 
     function renderScoreboard(scores) {
+      // 인게임 상단 참여자 옆 점수 표시 바 완전히 안 보이도록 숨김
       const board = document.getElementById('game-scoreboard');
-      if (!board) return;
-      board.innerHTML = '';
-      if (!scores) return;
-
-      const items = Object.entries(scores).map(([name, score]) => `
-        <div class="bg-[#1c3b22] px-2.5 py-1 rounded-xl border border-[#3e6b47] flex items-center space-x-1">
-          <span class="text-[#a5d6a7]">👤 ${name}:</span>
-          <span class="text-[#ffe082] font-black">${score}점</span>
-        </div>
-      `).join('');
-      board.innerHTML = items;
+      if (board) board.innerHTML = '';
     }
 
     function setupGameScreen(data) {
@@ -1759,16 +1757,29 @@
       if (modal) modal.classList.add('hidden');
 
       if (isTeacher) {
-        // 선생님: 새 게임 하기 -> 대기실로 이동
+        // 선생님: 새 게임 하기 -> 접속한 플레이어 목록은 유지한 채 점수를 0점으로 완전히 리셋 후 대기실 복귀
+        const resetScores = {};
+        studentList.forEach(s => { resetScores[s] = 0; });
+
         if (window.FirebaseApp && window.FirebaseApp.db && roomCode) {
           try {
             const { doc, updateDoc } = window.FirebaseApp;
-            await updateDoc(doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode), { status: 'lobby' });
-          } catch (e) {}
+            await updateDoc(doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode), {
+              status: 'lobby',
+              currentRound: 1,
+              strokes: [],
+              chat: [],
+              scores: resetScores,
+              timerStarted: false,
+              showIntro: false
+            });
+          } catch (e) {
+            console.warn("새 게임 설정 오류:", e);
+          }
         }
         showScreen('screen-teacher-lobby');
       } else {
-        // 학생: 메인 화면으로 돌아가기 (방 나가기)
+        // 학생: 메인 화면으로 돌아가기 (방 나가기 및 홈 화면으로)
         await leaveRoom();
       }
     }
