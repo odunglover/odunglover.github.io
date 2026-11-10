@@ -134,7 +134,7 @@
     </div>
 
     <div class="flex items-center gap-2">
-      <!-- 선생님 전용 강제 게임 종료 버튼 (인게임 중에만JS 제어로 노출) -->
+      <!-- 선생님 전용 강제 게임 종료 버튼 -->
       <button id="teacher-force-end-btn" onclick="forceEndGameByTeacher()" class="hidden px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow transition flex items-center gap-1 cursor-pointer">
         <span>🛑</span> 게임 종료
       </button>
@@ -213,7 +213,6 @@
           </h2>
           <p class="text-slate-500 text-sm sm:text-base">학생들이 들어오면 [게임 시작하기]를 눌러주세요.</p>
         </div>
-        <!-- 방 닫기 버튼 -->
         <button onclick="closeRoomByTeacher()" class="px-4 py-2 bg-rose-100 text-rose-600 rounded-xl hover:bg-rose-200 text-sm font-bold cursor-pointer">
           🚪 방 닫기
         </button>
@@ -239,7 +238,6 @@
               <span class="text-xs sm:text-sm text-slate-400 w-full text-center py-2">아직 접속한 학생이 없습니다.</span>
             </div>
 
-            <!-- 대기실 게임 시작하기 버튼 -->
             <button onclick="startGameByTeacher()" class="w-full py-4 bg-[#ff7a38] hover:bg-[#e86624] text-white text-xl sm:text-2xl rounded-2xl shadow-lg border-b-4 border-[#c74c10] transition flex items-center justify-center gap-2 cursor-pointer">
               <span>🚀</span> 게임 시작하기
             </button>
@@ -251,7 +249,6 @@
               <span>⚙️</span> 게임 세부 설정
             </h3>
 
-            <!-- 🎴 전체 라운드 수 선택 -->
             <div>
               <label class="block text-xs text-slate-600 mb-1.5 font-bold">🎴 전체 라운드 수</label>
               <div id="rounds-options" class="flex flex-wrap gap-2">
@@ -262,7 +259,6 @@
               </div>
             </div>
 
-            <!-- 👥 그리는 친구 선택 -->
             <div>
               <label class="block text-xs text-slate-600 mb-1.5 font-bold">👥 그리는 친구</label>
               <div id="painters-options" class="flex flex-wrap gap-2">
@@ -272,15 +268,11 @@
               </div>
             </div>
 
-            <!-- ⏱️ 한 사람 시간 -->
             <div>
               <label class="block text-xs text-slate-600 mb-1.5 font-bold">⏱️ 한 사람 시간</label>
-              <div id="timer-options" class="flex flex-wrap gap-2">
-                <!-- 동적으로 랜더링됨 -->
-              </div>
+              <div id="timer-options" class="flex flex-wrap gap-2"></div>
             </div>
 
-            <!-- ➡️ 다음 라운드 진행 방식 -->
             <div>
               <label class="block text-xs text-slate-600 mb-1.5 font-bold">➡️ 다음 라운드 진행 방식</label>
               <div id="next-round-options" class="flex flex-wrap gap-2">
@@ -290,7 +282,6 @@
               </div>
             </div>
 
-            <!-- 💡 분야 힌트 -->
             <div>
               <label class="block text-xs text-slate-600 mb-1.5 font-bold">💡 분야 힌트</label>
               <div id="hint-options" class="flex flex-wrap gap-2">
@@ -300,7 +291,6 @@
               </div>
             </div>
 
-            <!-- 📝 제시어 선택 방식 -->
             <div>
               <label class="block text-xs text-slate-600 mb-1.5 font-bold">📝 제시어 선택 방식</label>
               <div id="keyword-mode-options" class="flex flex-wrap gap-2 mb-2">
@@ -308,7 +298,6 @@
                 <button type="button" onclick="selectKeywordMode('custom')" class="px-3 py-1.5 rounded-xl border border-[#d9c4a5] text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 transition kw-mode-btn" data-value="custom">직접 입력</button>
               </div>
 
-              <!-- 기본 목록 카테고리 -->
               <div id="preset-categories-box" class="flex flex-wrap gap-2">
                 <label class="flex items-center space-x-1.5 px-3 py-1.5 bg-[#fdfbf7] rounded-xl border border-[#d9c4a5] cursor-pointer text-xs font-bold text-slate-700">
                   <input type="checkbox" name="quiz-category" value="animal" checked onchange="updateSettings()" class="w-4 h-4 accent-[#ff7a38]">
@@ -344,7 +333,6 @@
                 </label>
               </div>
 
-              <!-- 직접 입력 제시어 칸 -->
               <div id="custom-keywords-box" class="hidden mt-2">
                 <textarea id="custom-keywords-input" placeholder="제시어를 쉼표(,)나 줄바꿈으로 구분해서 적어주세요. 예: 사과, 바나나, 호랑이" class="w-full p-3 bg-[#fdfbf7] border border-[#d9c4a5] rounded-xl text-xs font-bold text-slate-700 h-24 focus:outline-none focus:border-[#ff7a38]"></textarea>
               </div>
@@ -379,7 +367,6 @@
 
     <!-- 4. 인게임 화면 -->
     <section id="screen-game" class="hidden w-full max-w-6xl space-y-4 animate-slide-up relative">
-      <!-- 2초 출제자 팝업 안내 레이어 (라운드 시작 시 1회만 표시) -->
       <div id="drawer-intro-overlay" class="hidden absolute inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center rounded-3xl">
         <div class="bg-white border-4 border-[#ff7a38] rounded-3xl p-8 shadow-2xl text-center animate-bounce">
           <span class="text-5xl block mb-2">🎨</span>
@@ -387,7 +374,6 @@
         </div>
       </div>
 
-      <!-- LAST 10초 집중 안내 팝업 -->
       <div id="last-spurt-overlay" class="hidden absolute top-20 left-1/2 -translate-x-1/2 z-40 bg-rose-600 text-white font-black px-6 py-2.5 rounded-full shadow-2xl border-2 border-white animate-pulse flex items-center gap-2">
         <span class="text-xl">⚠️</span>
         <span class="text-lg sm:text-xl">LAST 10초! 그림 금지 / 정답 집중 타임!</span>
@@ -413,7 +399,6 @@
           </div>
         </div>
 
-        <!-- 점수 현황 스코어보드 -->
         <div id="game-scoreboard" class="flex flex-wrap gap-2 pt-2 border-t border-[#3b6643] text-xs"></div>
       </div>
 
@@ -425,9 +410,7 @@
                 <span>🎨 현재 출제자:</span>
                 <span id="status-current-drawer" class="text-[#2e7d32]">홍길동</span>
               </div>
-              <div id="game-hint-box" class="text-xs bg-white px-3 py-1 rounded-full border border-[#a5d6a7] text-[#2e7d32]">
-                <!-- 힌트 위치 -->
-              </div>
+              <div id="game-hint-box" class="text-xs bg-white px-3 py-1 rounded-full border border-[#a5d6a7] text-[#2e7d32]"></div>
             </div>
             <div id="game-keyword-container" class="flex items-center space-x-2 text-lg">
               <span>📌 제시어:</span>
@@ -505,14 +488,11 @@
       <div class="bg-[#fffdf7] border-4 border-[#e5d7c3] rounded-3xl p-6 max-w-2xl w-full relative shadow-2xl space-y-4 animate-slide-up">
         <h3 id="round-result-title" class="text-2xl sm:text-3xl text-[#234d2b] font-black text-center">🎉 정답을 맞췄어요!</h3>
         
-        <!-- 좌우 2열 레이아웃: 왼쪽 캔버스, 오른쪽 안내 메시지 -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
-          <!-- 왼쪽 캔버스 썸네일 -->
           <div class="w-full aspect-[4/3] bg-[#1c3b22] border-4 border-[#5c3a21] rounded-2xl overflow-hidden relative shadow-md">
             <canvas id="result-canvas-preview" class="w-full h-full"></canvas>
           </div>
 
-          <!-- 오른쪽 메시지 영역 -->
           <div class="flex flex-col justify-center space-y-3 p-4 bg-[#fdfbf7] rounded-2xl border-2 border-[#e5d7c3] text-left">
             <p id="round-result-solver" class="text-xl sm:text-2xl text-[#ff7a38] font-black leading-snug">
               OO님이 맞추셨어요!
@@ -526,13 +506,12 @@
           </div>
         </div>
 
-        <!-- 하단 공통 안내 문구 -->
         <div class="p-3 bg-[#f5ebd7] border border-[#d9c4a5] rounded-xl text-center text-xs sm:text-sm font-bold text-[#c74c10]">
           📢 선생님께서 다음 라운드로 넘겨야 합니다.
         </div>
 
         <div id="next-round-btn-container" class="pt-1">
-          <button onclick="nextRoundByTeacher()" class="w-full py-3.5 bg-[#ff7a38] hover:bg-[#e86624] text-white text-lg rounded-2xl shadow-lg border-b-4 border-[#c74c10] transition">
+          <button id="next-round-action-btn" onclick="nextRoundByTeacher()" class="w-full py-3.5 bg-[#ff7a38] hover:bg-[#e86624] text-white text-lg rounded-2xl shadow-lg border-b-4 border-[#c74c10] transition">
             ➡️ 다음 라운드로 넘기기
           </button>
         </div>
@@ -548,9 +527,7 @@
           <p class="text-slate-500 text-sm mt-1">모든 라운드가 종료되었습니다.</p>
         </div>
 
-        <!-- 3등 -> 2등 -> 1등 애니메이션 연출 영역 -->
         <div id="ranking-cards-container" class="space-y-3">
-          <!-- 3등 카드 -->
           <div id="rank-card-3" class="hidden p-3.5 bg-amber-50 border-2 border-amber-300 rounded-2xl flex items-center justify-between shadow animate-pop-in">
             <div class="flex items-center space-x-3">
               <span class="text-3xl">🥉</span>
@@ -559,7 +536,6 @@
             <span id="rank-score-3" class="text-xl font-black text-amber-700">0점</span>
           </div>
 
-          <!-- 2등 카드 -->
           <div id="rank-card-2" class="hidden p-4 bg-slate-100 border-2 border-slate-300 rounded-2xl flex items-center justify-between shadow animate-pop-in">
             <div class="flex items-center space-x-3">
               <span class="text-4xl">🥈</span>
@@ -568,7 +544,6 @@
             <span id="rank-score-2" class="text-2xl font-black text-slate-700">0점</span>
           </div>
 
-          <!-- 1등 카드 -->
           <div id="rank-card-1" class="hidden p-5 bg-yellow-100 border-4 border-yellow-400 rounded-2xl flex items-center justify-between shadow-xl animate-pop-in">
             <div class="flex items-center space-x-3">
               <span class="text-5xl">🥇</span>
@@ -579,14 +554,15 @@
         </div>
 
         <div class="pt-2">
-          <button onclick="goHome()" class="w-full py-3.5 bg-[#234d2b] hover:bg-[#1a3a20] text-white text-lg rounded-2xl shadow font-bold">
+          <!-- 학생: 메인 화면으로 돌아가기(방 나가기), 선생님: 새 게임 하기(대기실 복귀) -->
+          <button id="final-action-btn" onclick="handleFinalAction()" class="w-full py-3.5 bg-[#234d2b] hover:bg-[#1a3a20] text-white text-lg rounded-2xl shadow font-bold cursor-pointer">
             🏠 메인 화면으로 돌아가기
           </button>
         </div>
       </div>
     </div>
 
-    <!-- QR 코드 확대 모달 (대형 QR 코드) -->
+    <!-- QR 코드 확대 모달 -->
     <div id="qr-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
       <div class="bg-[#fffdf7] border-4 border-[#e5d7c3] rounded-3xl p-8 max-w-md w-full text-center relative shadow-2xl animate-slide-up space-y-4">
         <button onclick="closeQrModal()" class="absolute top-4 right-4 text-2xl text-slate-400 hover:text-slate-600">✖</button>
@@ -627,6 +603,7 @@
     let timerStarted = false;
     let remainingTime = 30;
     let isLastSpurt = false;
+    let introShownForRound = null;
 
     const keywordPresets = {
       animal: [
@@ -722,7 +699,6 @@
       return !isTeacher && typeof roomData !== 'undefined' && roomData && roomData.drawer === studentName;
     }
 
-    // ✏️ 출제자가 첫 획(마우스/터치 시작)을 그리는 순간 타이머가 시작되도록 연동
     function startDrawing(e) {
       if (!isCurrentDrawer() || (typeof roomData !== 'undefined' && roomData && roomData.status !== 'playing') || isLastSpurt) return;
       isDrawing = true;
@@ -973,7 +949,7 @@
       const modal = document.getElementById('qr-modal');
       if (modal) {
         modal.classList.remove('hidden');
-        renderQrCode('modal-qrcode', roomCode, 220); // 크게 확대된 크기 지정
+        renderQrCode('modal-qrcode', roomCode, 220);
       }
     }
 
@@ -1119,6 +1095,12 @@
     async function forceEndGameByTeacher() {
       if (!isTeacher) return;
       if (!confirm("현재 진행 중인 게임을 강제 종료하고 최종 결과로 이동하시겠습니까?")) return;
+      if (window.FirebaseApp && window.FirebaseApp.db && roomCode) {
+        try {
+          const { doc, updateDoc } = window.FirebaseApp;
+          await updateDoc(doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode), { status: 'game_over' });
+        } catch (e) {}
+      }
       showFinalRankModal(roomData?.scores || {});
     }
 
@@ -1340,7 +1322,6 @@
       } else {
         chatInputContainer.classList.remove('hidden');
         if (studentName === data.drawer) {
-          // 📌 출제자 본인 화면 제시어 옆에 "(내가 그릴 차례!)" 표시
           kwDisplay.innerHTML = `${data.keyword} <span class="text-rose-600 font-black text-base">(내가 그릴 차례!)</span>`;
           if (chatInput) {
             chatInput.disabled = true;
@@ -1404,7 +1385,6 @@
         }
       }
 
-      // 라운드 변경 시 1회만 인트로 팝업 표시하도록 제어
       const currentRoundKey = `${data.currentRound || 1}_${data.drawer}`;
       if (data.showIntro && introShownForRound !== currentRoundKey) {
         introShownForRound = currentRoundKey;
@@ -1607,13 +1587,35 @@
       }, 50);
 
       const btnContainer = document.getElementById('next-round-btn-container');
+      const actionBtn = document.getElementById('next-round-action-btn');
       const mode = data.settings?.nextRoundMode || 'manual';
+      const currentRoundNum = data.currentRound || 1;
+      const totalRounds = data.settings?.totalRounds || 5;
+      const isLastRound = currentRoundNum >= totalRounds;
 
-      if (isTeacher && mode === 'manual') {
+      // 📌 마지막 라운드인 경우 버튼을 '최종 랭킹 보기'로 변경
+      if (isLastRound) {
+        actionBtn.innerText = "🏆 최종 랭킹 보기";
+        actionBtn.onclick = async () => {
+          if (window.FirebaseApp && window.FirebaseApp.db) {
+            try {
+              const { doc, updateDoc } = window.FirebaseApp;
+              await updateDoc(doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode), { status: 'game_over' });
+            } catch (e) {}
+          } else {
+            showFinalRankModal(roomData?.scores || {});
+          }
+        };
+      } else {
+        actionBtn.innerText = "➡️ 다음 라운드로 넘기기";
+        actionBtn.onclick = nextRoundByTeacher;
+      }
+
+      if (isTeacher && (mode === 'manual' || isLastRound)) {
         btnContainer.classList.remove('hidden');
       } else {
         btnContainer.classList.add('hidden');
-        if (isTeacher) {
+        if (isTeacher && !isLastRound) {
           let delay = 5000;
           if (mode === 'auto8') delay = 8000;
           if (mode === 'auto10') delay = 10000;
@@ -1636,9 +1638,7 @@
           try {
             const { doc, updateDoc } = window.FirebaseApp;
             await updateDoc(doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode), { status: 'game_over' });
-          } catch (err) {
-            console.warn("Game over sync error:", err);
-          }
+          } catch (err) {}
         } else {
           showFinalRankModal(roomData?.scores || {});
         }
@@ -1697,9 +1697,7 @@
         try {
           const { doc, updateDoc } = window.FirebaseApp;
           await updateDoc(doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode), updateData);
-        } catch (err) {
-          console.warn("다음 라운드 처리 오류:", err);
-        }
+        } catch (err) {}
       }
     }
 
@@ -1707,6 +1705,18 @@
       const modal = document.getElementById('final-rank-modal');
       if (!modal) return;
       modal.classList.remove('hidden');
+
+      // 📌 선생님이면 버튼을 "새 게임 하기"로, 학생이면 "메인 화면으로 돌아가기"로 분기
+      const finalActionBtn = document.getElementById('final-action-btn');
+      if (finalActionBtn) {
+        if (isTeacher) {
+          finalActionBtn.innerText = "🔄 새 게임 하기";
+          finalActionBtn.className = "w-full py-3.5 bg-[#ff7a38] hover:bg-[#e86624] text-white text-lg rounded-2xl shadow font-bold cursor-pointer";
+        } else {
+          finalActionBtn.innerText = "🏠 메인 화면으로 돌아가기";
+          finalActionBtn.className = "w-full py-3.5 bg-[#234d2b] hover:bg-[#1a3a20] text-white text-lg rounded-2xl shadow font-bold cursor-pointer";
+        }
+      }
 
       const sorted = Object.entries(scores || {}).sort((a, b) => b[1] - a[1]);
 
@@ -1741,6 +1751,26 @@
       }, 2500);
     }
 
+    // 📌 최종 발표창 하단 버튼 액션 분기 처리 함수
+    async function handleFinalAction() {
+      const modal = document.getElementById('final-rank-modal');
+      if (modal) modal.classList.add('hidden');
+
+      if (isTeacher) {
+        // 선생님: 새 게임 하기 -> 대기실로 이동
+        if (window.FirebaseApp && window.FirebaseApp.db && roomCode) {
+          try {
+            const { doc, updateDoc } = window.FirebaseApp;
+            await updateDoc(doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode), { status: 'lobby' });
+          } catch (e) {}
+        }
+        showScreen('screen-teacher-lobby');
+      } else {
+        // 학생: 메인 화면으로 돌아가기 (방 나가기)
+        await leaveRoom();
+      }
+    }
+
     window.showTeacherSetup = showTeacherSetup;
     window.showStudentSetup = showStudentSetup;
     window.resetHomeForm = resetHomeForm;
@@ -1762,6 +1792,7 @@
     window.closeQrModal = closeQrModal;
     window.startGameByTeacher = startGameByTeacher;
     window.nextRoundByTeacher = nextRoundByTeacher;
+    window.handleFinalAction = handleFinalAction;
     window.setDrawColor = setDrawColor;
     window.setEraserMode = setEraserMode;
     window.triggerClearCanvas = triggerClearCanvas;
