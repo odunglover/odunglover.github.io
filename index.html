@@ -677,6 +677,97 @@
       ]
     };
 
+    // 캔버스 코어 함수 (호이스팅 에러 방지를 위해 위쪽 선언)
+    function getCanvasCoordinates(e) {
+      if (!canvas) return { x: 0, y: 0 };
+      const rect = canvas.getBoundingClientRect();
+      const clientX = e.clientX !== undefined ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+      const clientY = e.clientY !== undefined ? e.clientY : (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+      return {
+        x: Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)),
+        y: Math.max(0, Math.min(1, (clientY - rect.top) / rect.height))
+      };
+    }
+
+    function redrawStrokes() {
+      if (!ctx || !canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const w = rect.width;
+      const h = rect.height;
+
+      ctx.fillStyle = '#1c3b22';
+      ctx.fillRect(0, 0, w, h);
+
+      if (typeof roomData === 'undefined' || !roomData || !roomData.strokes) return;
+
+      ctx.beginPath();
+      roomData.strokes.forEach(s => {
+        if (s.type === 'start') {
+          ctx.beginPath();
+          ctx.moveTo(s.x * w, s.y * h);
+          ctx.strokeStyle = s.color;
+          ctx.lineWidth = s.width;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+        } else if (s.type === 'draw') {
+          ctx.strokeStyle = s.color;
+          ctx.lineWidth = s.width;
+          ctx.lineTo(s.x * w, s.y * h);
+          ctx.stroke();
+        } else if (s.type === 'clear') {
+          ctx.fillStyle = '#1c3b22';
+          ctx.fillRect(0, 0, w, h);
+          ctx.beginPath();
+        }
+      });
+    }
+
+    function isCurrentDrawer() {
+      return !isTeacher && typeof roomData !== 'undefined' && roomData && roomData.drawer === studentName;
+    }
+
+    function startDrawing(e) {
+      if (!isCurrentDrawer() || (typeof roomData !== 'undefined' && roomData && roomData.status !== 'playing') || isLastSpurt) return;
+      isDrawing = true;
+      const coords = getCanvasCoordinates(e);
+      const rect = canvas.getBoundingClientRect();
+
+      ctx.beginPath();
+      ctx.moveTo(coords.x * rect.width, coords.y * rect.height);
+
+      if (!timerStarted) {
+        timerStarted = true;
+        startLocalTimer();
+        if (window.FirebaseApp && window.FirebaseApp.db && roomCode) {
+          const { doc, updateDoc } = window.FirebaseApp;
+          updateDoc(doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode), { timerStarted: true }).catch(()=>{});
+        }
+      }
+
+      pushStroke({ type: 'start', x: coords.x, y: coords.y, color: currentColor, width: currentLineWidth });
+    }
+
+    function draw(e) {
+      if (!isDrawing || !isCurrentDrawer() || isLastSpurt) return;
+      const coords = getCanvasCoordinates(e);
+      const rect = canvas.getBoundingClientRect();
+
+      ctx.strokeStyle = currentColor;
+      ctx.lineWidth = currentLineWidth;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.lineTo(coords.x * rect.width, coords.y * rect.height);
+      ctx.stroke();
+
+      pushStroke({ type: 'draw', x: coords.x, y: coords.y, color: currentColor, width: currentLineWidth });
+    }
+
+    function stopDrawing() {
+      if (!isDrawing) return;
+      isDrawing = false;
+      pushStroke({ type: 'end' });
+    }
+
     // 캔버스 컨트롤 함수
     function setDrawColor(color) {
       currentColor = color;
@@ -727,6 +818,7 @@
 
       const urlParams = new URLSearchParams(window.location.search);
       let roomParam = urlParams.get('room');
+      
       if (!roomParam && window.location.hash) {
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         roomParam = hashParams.get('room');
@@ -905,7 +997,11 @@
 
       try {
         if (window.QRCode) {
-          new QRCode(container, { text: targetUrl, width: 140, height: 140 });
+          new QRCode(container, {
+            text: targetUrl,
+            width: 140,
+            height: 140
+          });
         } else {
           container.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(targetUrl)}" alt="QR Code" class="rounded-xl" />`;
         }
@@ -927,18 +1023,20 @@
       document.getElementById('user-name-label').innerText = teacherName;
       document.getElementById('teacher-room-code').innerText = roomCode;
       document.getElementById('modal-room-code').innerText = roomCode;
-      document.getElementById('teacher-force-end-btn').classList.remove('hidden');
 
       showScreen('screen-teacher-lobby');
 
-      setTimeout(() => { renderQrCode('teacher-qrcode', roomCode); }, 100);
+      setTimeout(() => {
+        renderQrCode('teacher-qrcode', roomCode);
+      }, 100);
 
+      const initialScores = {};
       const initialRoomState = {
         roomCode: roomCode,
         teacherName: teacherName,
         status: 'lobby',
         students: [],
-        scores: {},
+        scores: initialScores,
         currentRound: 1,
         strokes: [],
         keyword: '대한민국',
@@ -953,7 +1051,8 @@
       if (window.FirebaseApp && window.FirebaseApp.db) {
         try {
           const { doc, setDoc } = window.FirebaseApp;
-          await setDoc(doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode), initialRoomState);
+          const roomRef = doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode);
+          await setDoc(roomRef, initialRoomState);
         } catch (err) {
           console.warn("Firestore error:", err);
         }
@@ -1008,10 +1107,12 @@
 
     async function closeRoomByTeacher() {
       if (!confirm("정말 방을 닫으시겠습니까? 모든 학생 접속이 종료됩니다.")) return;
+
       if (window.FirebaseApp && window.FirebaseApp.db && roomCode) {
         try {
           const { doc, updateDoc } = window.FirebaseApp;
-          await updateDoc(doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode), { status: 'closed' });
+          const roomRef = doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode);
+          await updateDoc(roomRef, { status: 'closed' });
         } catch (err) {
           console.warn("방 닫기 오류:", err);
         }
@@ -1022,8 +1123,8 @@
 
     async function forceEndGameByTeacher() {
       if (!isTeacher) return;
-      if (!confirm("현재 진행 중인 게임을 완전히 종료하고 메인으로 가시겠습니까?")) return;
-      closeRoomByTeacher();
+      if (!confirm("현재 진행 중인 게임을 강제 종료하고 최종 결과로 이동하시겠습니까?")) return;
+      showFinalRankModal(roomData?.scores || {});
     }
 
     async function leaveRoom() {
@@ -1083,14 +1184,19 @@
           } else {
             container.innerHTML = studentList.map(s => `
               <span class="px-3 py-1.5 bg-[#e8f5e9] text-[#2e7d32] rounded-xl text-xs sm:text-sm font-bold border border-[#a5d6a7]">
-                👤 ${s} (${data.scores ? (data.scores[s] || 0) : 0}점)
+                👤 ${s}
               </span>
             `).join('');
           }
         }
       }
 
-      updateScoreboard(data.scores || {});
+      const forceBtn = document.getElementById('teacher-force-end-btn');
+      if (isTeacher && (data.status === 'playing' || data.status === 'round_ended')) {
+        if (forceBtn) forceBtn.classList.remove('hidden');
+      } else {
+        if (forceBtn) forceBtn.classList.add('hidden');
+      }
 
       if (data.status === 'playing') {
         setupGameScreen(data);
@@ -1100,20 +1206,9 @@
         }
       } else if (data.status === 'round_ended') {
         showRoundResultModal(data);
-      } else if (data.status === 'game_finished') {
+      } else if (data.status === 'game_over') {
         showFinalRankModal(data.scores || {});
       }
-    }
-
-    function updateScoreboard(scores) {
-      const box = document.getElementById('game-scoreboard');
-      if (!box) return;
-      box.innerHTML = studentList.map(s => `
-        <div class="px-2.5 py-1 bg-[#1c3b22] border border-[#3e6b47] rounded-lg text-white font-bold flex items-center gap-1">
-          <span>👤 ${s}:</span>
-          <span class="text-[#ffe082]">${scores[s] || 0}점</span>
-        </div>
-      `).join('');
     }
 
     async function startGameByTeacher() {
@@ -1140,7 +1235,7 @@
         const pool = keywordPresets[catKey] || ["사과"];
         selectedKeyword = pool[Math.floor(Math.random() * pool.length)];
 
-        const catNames = { 
+        const catNames = {
           animal: "동물/식물", object: "학용품/사물", history: "역사/문화재", food: "음식/간식",
           sports: "스포츠/운동", jobs: "직업/인물", places: "장소/건물", nature: "자연/우주"
         };
@@ -1148,8 +1243,9 @@
       }
 
       const randomDrawer = studentList[Math.floor(Math.random() * studentList.length)];
+
       const initialScores = {};
-      studentList.forEach(s => initialScores[s] = 0);
+      studentList.forEach(s => { initialScores[s] = 0; });
 
       const updateData = {
         status: 'playing',
@@ -1179,6 +1275,7 @@
 
     async function pushStroke(stroke) {
       if (!roomCode || !window.FirebaseApp || !window.FirebaseApp.db) return;
+      
       const strokes = roomData.strokes || [];
       strokes.push(stroke);
       roomData.strokes = strokes;
@@ -1192,12 +1289,28 @@
           strokeThrottleTimeout = null;
           try {
             const { doc, updateDoc } = window.FirebaseApp;
-            await updateDoc(doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode), { strokes: roomData.strokes });
+            const roomRef = doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode);
+            await updateDoc(roomRef, { strokes: roomData.strokes });
           } catch (err) {
             console.warn("Stroke sync error:", err);
           }
-        }, 80);
+        }, 100);
       }
+    }
+
+    function renderScoreboard(scores) {
+      const board = document.getElementById('game-scoreboard');
+      if (!board) return;
+      board.innerHTML = '';
+      if (!scores) return;
+
+      const items = Object.entries(scores).map(([name, score]) => `
+        <div class="bg-[#1c3b22] px-2.5 py-1 rounded-xl border border-[#3e6b47] flex items-center space-x-1">
+          <span class="text-[#a5d6a7]">👤 ${name}:</span>
+          <span class="text-[#ffe082] font-black">${score}점</span>
+        </div>
+      `).join('');
+      board.innerHTML = items;
     }
 
     function setupGameScreen(data) {
@@ -1207,21 +1320,13 @@
       showScreen('screen-game');
       setTimeout(resizeCanvasResolution, 100);
 
-      // 게임 시작 시 선생님 화면 헤더에만 [🛑 게임 종료] 버튼 표시
-      const teacherEndBtn = document.getElementById('teacher-force-end-btn');
-      if (teacherEndBtn) {
-        if (isTeacher) {
-          teacherEndBtn.classList.remove('hidden');
-        } else {
-          teacherEndBtn.classList.add('hidden');
-        }
-      }
-
       document.getElementById('game-room-code-display').innerText = roomCode;
       document.getElementById('game-drawer-name-display').innerText = data.drawer || '미정';
       document.getElementById('status-current-drawer').innerText = data.drawer || '미정';
       document.getElementById('game-round-info').innerText = `${data.currentRound || 1} / ${data.settings?.totalRounds || 5}`;
-      
+
+      renderScoreboard(data.scores);
+
       const kwDisplay = document.getElementById('game-keyword-display');
       const chatInputContainer = document.getElementById('chat-input-container');
       const chatInput = document.getElementById('chat-input');
@@ -1309,9 +1414,11 @@
         const overlay = document.getElementById('drawer-intro-overlay');
         const text = document.getElementById('drawer-intro-text');
         if (overlay && text) {
-          text.innerText = `${data.drawer}님이 그릴 수 있어요!`;
+          text.innerText = studentName === data.drawer ? "내가 그려야 해요! 🎨" : `${data.drawer}님이 그릴 수 있어요!`;
           overlay.classList.remove('hidden');
-          setTimeout(() => { overlay.classList.add('hidden'); }, 2000);
+          setTimeout(() => {
+            overlay.classList.add('hidden');
+          }, 2000);
         }
       }
 
@@ -1321,96 +1428,6 @@
     function closeTeacherStartModal() {
       const modal = document.getElementById('teacher-start-modal');
       if (modal) modal.classList.add('hidden');
-    }
-
-    function isCurrentDrawer() {
-      return !isTeacher && roomData && roomData.drawer === studentName;
-    }
-
-    function getCanvasCoordinates(e) {
-      if (!canvas) return { x: 0, y: 0 };
-      const rect = canvas.getBoundingClientRect();
-      const clientX = e.clientX !== undefined ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
-      const clientY = e.clientY !== undefined ? e.clientY : (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
-      return {
-        x: Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)),
-        y: Math.max(0, Math.min(1, (clientY - rect.top) / rect.height))
-      };
-    }
-
-    function startDrawing(e) {
-      if (!isCurrentDrawer() || (roomData && roomData.status !== 'playing') || isLastSpurt) return;
-      isDrawing = true;
-      const coords = getCanvasCoordinates(e);
-
-      const rect = canvas.getBoundingClientRect();
-      ctx.beginPath();
-      ctx.moveTo(coords.x * rect.width, coords.y * rect.height);
-
-      if (!timerStarted) {
-        timerStarted = true;
-        startLocalTimer();
-        if (window.FirebaseApp && window.FirebaseApp.db && roomCode) {
-          const { doc, updateDoc } = window.FirebaseApp;
-          updateDoc(doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode), { timerStarted: true }).catch(()=>{});
-        }
-      }
-
-      pushStroke({ type: 'start', x: coords.x, y: coords.y, color: currentColor, width: currentLineWidth });
-    }
-
-    function draw(e) {
-      if (!isDrawing || !isCurrentDrawer() || isLastSpurt) return;
-      const coords = getCanvasCoordinates(e);
-      const rect = canvas.getBoundingClientRect();
-
-      ctx.strokeStyle = currentColor;
-      ctx.lineWidth = currentLineWidth;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.lineTo(coords.x * rect.width, coords.y * rect.height);
-      ctx.stroke();
-
-      pushStroke({ type: 'draw', x: coords.x, y: coords.y, color: currentColor, width: currentLineWidth });
-    }
-
-    function stopDrawing() {
-      if (!isDrawing) return;
-      isDrawing = false;
-      pushStroke({ type: 'end' });
-    }
-
-    function redrawStrokes() {
-      if (!ctx || !canvas) return;
-      const rect = canvas.getBoundingClientRect();
-      const w = rect.width;
-      const h = rect.height;
-
-      ctx.fillStyle = '#1c3b22';
-      ctx.fillRect(0, 0, w, h);
-
-      if (typeof roomData === 'undefined' || !roomData || !roomData.strokes) return;
-
-      ctx.beginPath();
-      roomData.strokes.forEach(s => {
-        if (s.type === 'start') {
-          ctx.beginPath();
-          ctx.moveTo(s.x * w, s.y * h);
-          ctx.strokeStyle = s.color;
-          ctx.lineWidth = s.width;
-          ctx.lineCap = 'round';
-          ctx.lineJoin = 'round';
-        } else if (s.type === 'draw') {
-          ctx.strokeStyle = s.color;
-          ctx.lineWidth = s.width;
-          ctx.lineTo(s.x * w, s.y * h);
-          ctx.stroke();
-        } else if (s.type === 'clear') {
-          ctx.fillStyle = '#1c3b22';
-          ctx.fillRect(0, 0, w, h);
-          ctx.beginPath();
-        }
-      });
     }
 
     function startLocalTimer() {
@@ -1451,7 +1468,6 @@
       display.innerText = `${m}:${s}`;
     }
 
-    // 정답 입력 및 점수 산출
     async function sendChat() {
       const input = document.getElementById('chat-input');
       const text = input ? input.value.trim() : '';
@@ -1461,6 +1477,13 @@
 
       const normalize = (str) => (str || '').replace(/\s+/g, '').toLowerCase();
       const isCorrect = normalize(text) === normalize(roomData.keyword);
+
+      let earnedPoints = 0;
+      if (isCorrect) {
+        const totalSec = roomData?.settings?.timer || 30;
+        const ratio = Math.max(0, Math.min(1, remainingTime / totalSec));
+        earnedPoints = Math.round(10 + ratio * 89);
+      }
 
       const chatItem = {
         sender: studentName,
@@ -1482,34 +1505,16 @@
       }
 
       if (isCorrect) {
-        const totalTimer = roomData?.settings?.timer || 30;
-        const ratio = Math.max(0, Math.min(1, remainingTime / totalTimer));
-        const earnedScore = Math.floor(10 + ratio * 89);
-        endRound(studentName, '정답!', earnedScore);
-      }
-    }
-
-    function showScreen(screenId) {
-      ['screen-home', 'screen-teacher-lobby', 'screen-student-lobby', 'screen-game'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.classList.add('hidden');
-      });
-      const target = document.getElementById(screenId);
-      if (target) target.classList.remove('hidden');
-
-      // 게임 화면(screen-game)이 아닐 때는 헤더의 게임 종료 버튼 숨김
-      const teacherEndBtn = document.getElementById('teacher-force-end-btn');
-      if (teacherEndBtn && screenId !== 'screen-game') {
-        teacherEndBtn.classList.add('hidden');
+        endRound(studentName, '정답!', earnedPoints);
       }
     }
 
     async function forceCorrectAnswer(senderName) {
       if (!isTeacher) return;
-      const totalTimer = roomData?.settings?.timer || 30;
-      const ratio = Math.max(0, Math.min(1, remainingTime / totalTimer));
-      const earnedScore = Math.floor(10 + ratio * 89);
-      endRound(senderName, '선생님 인정 정답!', earnedScore);
+      const totalSec = roomData?.settings?.timer || 30;
+      const ratio = Math.max(0, Math.min(1, remainingTime / totalSec));
+      const earnedPoints = Math.round(10 + ratio * 89);
+      endRound(senderName, '선생님 인정 정답!', earnedPoints);
     }
 
     function renderChatMessages(chatList) {
@@ -1538,20 +1543,20 @@
       box.scrollTop = box.scrollHeight;
     }
 
-    async function endRound(solverName, message, earnedScore = 0) {
+    async function endRound(solverName, message, points = 0) {
       if (timerInterval) clearInterval(timerInterval);
 
-      const scores = roomData.scores || {};
+      const scores = roomData?.scores || {};
       if (solverName) {
-        scores[solverName] = (scores[solverName] || 0) + earnedScore;
+        scores[solverName] = (scores[solverName] || 0) + points;
       }
 
       const updateData = {
         status: 'round_ended',
         solver: solverName,
-        endMessage: message,
-        earnedScore: earnedScore,
-        scores: scores
+        earnedPoints: points,
+        scores: scores,
+        endMessage: message
       };
 
       if (window.FirebaseApp && window.FirebaseApp.db) {
@@ -1574,18 +1579,18 @@
 
       const title = document.getElementById('round-result-title');
       const solver = document.getElementById('round-result-solver');
-      const earned = document.getElementById('round-result-earned-score');
+      const earnedScore = document.getElementById('round-result-earned-score');
       const keyword = document.getElementById('round-result-keyword');
 
       if (data.solver) {
         title.innerText = "🎉 정답을 맞췄어요!";
         solver.innerText = `${data.solver}님이 맞추셨어요!`;
-        earned.innerText = `+${data.earnedScore || 0}점 획득!`;
-        earned.classList.remove('hidden');
+        earnedScore.innerText = `+${data.earnedPoints || 0}점 획득!`;
+        earnedScore.classList.remove('hidden');
       } else {
         title.innerText = "⏱️ 라운드가 종료되었어요!";
         solver.innerText = "아쉽게 아무도 맞추지 못했어요.";
-        earned.classList.add('hidden');
+        earnedScore.classList.add('hidden');
       }
       keyword.innerText = `제시어는 [${data.keyword}] 였답니다.`;
 
@@ -1610,12 +1615,14 @@
         if (isTeacher) {
           let delay = 5000;
           if (mode === 'auto8') delay = 8000;
-          setTimeout(() => { nextRoundByTeacher(); }, delay);
+          if (mode === 'auto10') delay = 10000;
+          setTimeout(() => {
+            nextRoundByTeacher();
+          }, delay);
         }
       }
     }
 
-    // 다음 라운드 진입 및 교대 지정
     async function nextRoundByTeacher() {
       const modal = document.getElementById('round-result-modal');
       if (modal) modal.classList.add('hidden');
@@ -1623,16 +1630,16 @@
       const currentRoundNum = roomData?.currentRound || 1;
       const totalRounds = roomData?.settings?.totalRounds || 5;
 
-      // 🎴 총 라운드 완료 체크 (최종 시상식 전환)
       if (currentRoundNum >= totalRounds) {
-        const updateData = { status: 'game_finished' };
         if (window.FirebaseApp && window.FirebaseApp.db) {
           try {
             const { doc, updateDoc } = window.FirebaseApp;
-            await updateDoc(doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode), updateData);
-          } catch (e) {
-            console.warn("최종 종결 업데이트 오류:", e);
+            await updateDoc(doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode), { status: 'game_over' });
+          } catch (err) {
+            console.warn("Game over sync error:", err);
           }
+        } else {
+          showFinalRankModal(roomData?.scores || {});
         }
         return;
       }
@@ -1650,32 +1657,32 @@
           }
         }
       } else {
-        const cats = gameSettings.categories.length > 0 ? gameSettings.categories : ["animal"];
+        const cats = (gameSettings.categories && gameSettings.categories.length > 0) ? gameSettings.categories : ["animal"];
         const catKey = cats[Math.floor(Math.random() * cats.length)];
         const pool = keywordPresets[catKey] || ["사과"];
         selectedKeyword = pool[Math.floor(Math.random() * pool.length)];
 
-        const catNames = { 
+        const catNames = {
           animal: "동물/식물", object: "학용품/사물", history: "역사/문화재", food: "음식/간식",
           sports: "스포츠/운동", jobs: "직업/인물", places: "장소/건물", nature: "자연/우주"
         };
         categoryName = catNames[catKey] || "일반";
       }
 
-      // 출제자 지정 (2명일 경우 번갈아가면서 교대)
-      let nextDrawer = '';
+      let nextDrawer = "";
       if (studentList.length === 2) {
-        const currentDrawer = roomData?.drawer;
-        nextDrawer = studentList.find(s => s !== currentDrawer) || studentList[0];
+        const prevDrawer = roomData?.drawer;
+        nextDrawer = studentList.find(s => s !== prevDrawer) || studentList[0];
       } else {
         nextDrawer = studentList[Math.floor(Math.random() * studentList.length)];
       }
 
+      const nextRoundNum = currentRoundNum + 1;
       timerStarted = false;
 
       const updateData = {
         status: 'playing',
-        currentRound: currentRoundNum + 1,
+        currentRound: nextRoundNum,
         drawer: nextDrawer,
         keyword: selectedKeyword,
         categoryName: categoryName,
@@ -1695,51 +1702,45 @@
       }
     }
 
-    // 🏆 최종 시상식 모달 렌더링 (3등 -> 2등 -> 1등 차례대로 시차 연출)
     function showFinalRankModal(scores) {
-      showScreen('screen-home'); // 이전 화면 가리기
       const modal = document.getElementById('final-rank-modal');
       if (!modal) return;
       modal.classList.remove('hidden');
 
-      // 점수 순 내림차순 정렬
-      const sorted = Object.entries(scores)
-        .map(([name, score]) => ({ name, score }))
-        .sort((a, b) => b.score - a.score);
+      const sorted = Object.entries(scores || {}).sort((a, b) => b[1] - a[1]);
 
       const card3 = document.getElementById('rank-card-3');
       const card2 = document.getElementById('rank-card-2');
       const card1 = document.getElementById('rank-card-1');
 
-      [card1, card2, card3].forEach(c => c.classList.add('hidden'));
+      [card3, card2, card1].forEach(c => c && c.classList.add('hidden'));
 
-      // 3등 -> 2등 -> 1등 순으로 짠! 등장하는 타임라인 애니메이션
       setTimeout(() => {
-        if (sorted[2]) {
-          document.getElementById('rank-name-3').innerText = sorted[2].name;
-          document.getElementById('rank-score-3').innerText = `${sorted[2].score}점`;
+        if (sorted[2] && card3) {
+          document.getElementById('rank-name-3').innerText = sorted[2][0];
+          document.getElementById('rank-score-3').innerText = `${sorted[2][1]}점`;
           card3.classList.remove('hidden');
         }
-      }, 400);
+      }, 500);
 
       setTimeout(() => {
-        if (sorted[1]) {
-          document.getElementById('rank-name-2').innerText = sorted[1].name;
-          document.getElementById('rank-score-2').innerText = `${sorted[1].score}점`;
+        if (sorted[1] && card2) {
+          document.getElementById('rank-name-2').innerText = sorted[1][0];
+          document.getElementById('rank-score-2').innerText = `${sorted[1][1]}점`;
           card2.classList.remove('hidden');
         }
-      }, 1200);
+      }, 1500);
 
       setTimeout(() => {
-        if (sorted[0]) {
-          document.getElementById('rank-name-1').innerText = sorted[0].name;
-          document.getElementById('rank-score-1').innerText = `${sorted[0].score}점`;
+        if (sorted[0] && card1) {
+          document.getElementById('rank-name-1').innerText = sorted[0][0];
+          document.getElementById('rank-score-1').innerText = `${sorted[0][1]}점`;
           card1.classList.remove('hidden');
         }
-      }, 2000);
+      }, 2500);
     }
 
-    // 전역 함수 바인딩
+    // 전역 스코프 함수 바인딩
     window.showTeacherSetup = showTeacherSetup;
     window.showStudentSetup = showStudentSetup;
     window.resetHomeForm = resetHomeForm;
@@ -1747,11 +1748,11 @@
     window.processStudentJoin = processStudentJoin;
     window.closeRoomByTeacher = closeRoomByTeacher;
     window.forceEndGameByTeacher = forceEndGameByTeacher;
+    window.closeTeacherStartModal = closeTeacherStartModal;
     window.leaveRoom = leaveRoom;
     window.goHome = goHome;
     window.selectRounds = selectRounds;
     window.selectPainters = selectPainters;
-    window.renderTimerOptions = renderTimerOptions;
     window.selectTimer = selectTimer;
     window.selectNextRoundMode = selectNextRoundMode;
     window.selectHintMode = selectHintMode;
@@ -1759,7 +1760,6 @@
     window.updateSettings = updateSettings;
     window.openQrModal = openQrModal;
     window.closeQrModal = closeQrModal;
-    window.closeTeacherStartModal = closeTeacherStartModal;
     window.startGameByTeacher = startGameByTeacher;
     window.nextRoundByTeacher = nextRoundByTeacher;
     window.setDrawColor = setDrawColor;
