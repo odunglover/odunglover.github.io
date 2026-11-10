@@ -1352,6 +1352,7 @@
         const teacherRoundKey = `round_${data.currentRound || 1}`;
         if (data.showIntro && introShownForRound !== teacherRoundKey) {
           introShownForRound = teacherRoundKey;
+          data.showIntro = false;
           document.getElementById('teacher-modal-keyword').innerText = data.keyword;
           document.getElementById('teacher-modal-drawer').innerText = data.drawer;
           document.getElementById('teacher-start-modal').classList.remove('hidden');
@@ -1425,6 +1426,7 @@
       const currentRoundKey = `${data.currentRound || 1}_${data.drawer}`;
       if (data.showIntro && introShownForRound !== currentRoundKey) {
         introShownForRound = currentRoundKey;
+        data.showIntro = false;
         const overlay = document.getElementById('drawer-intro-overlay');
         const text = document.getElementById('drawer-intro-text');
         if (overlay && text) {
@@ -1714,7 +1716,12 @@
       }
 
       const nextRoundNum = currentRoundNum + 1;
+      
+      // 타이머 리셋
+      if (timerInterval) clearInterval(timerInterval);
       timerStarted = false;
+      isLastSpurt = false;
+      document.getElementById('last-spurt-overlay').classList.add('hidden');
 
       const updateData = {
         status: 'playing',
