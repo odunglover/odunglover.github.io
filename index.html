@@ -1563,7 +1563,11 @@
     }
 
     async function endRound(solverName, message, points = 0) {
-      if (timerInterval) clearInterval(timerInterval);
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+      timerStarted = false;
 
       const scores = roomData?.scores || {};
       if (solverName) {
@@ -1575,7 +1579,8 @@
         solver: solverName,
         earnedPoints: points,
         scores: scores,
-        endMessage: message
+        endMessage: message,
+        timerStarted: false
       };
 
       if (window.FirebaseApp && window.FirebaseApp.db) {
@@ -1592,6 +1597,12 @@
     }
 
     function showRoundResultModal(data) {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+      timerStarted = false;
+
       const modal = document.getElementById('round-result-modal');
       if (!modal) return;
       modal.classList.remove('hidden');
