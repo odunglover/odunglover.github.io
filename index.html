@@ -101,6 +101,15 @@
       animation: slideUp 0.4s ease-out forwards;
     }
 
+    @keyframes popIn {
+      0% { opacity: 0; transform: scale(0.5) translateY(30px); }
+      70% { transform: scale(1.1); }
+      100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .animate-pop-in {
+      animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
     canvas {
       touch-action: none;
       display: block;
@@ -123,8 +132,16 @@
       <span class="text-2xl">🎨</span>
       <h1 class="text-xl sm:text-2xl text-[#234d2b] font-black tracking-wide">학교 캐치마인드</h1>
     </div>
-    <div id="header-user-tag" class="hidden text-sm bg-[#e8f5e9] text-[#2e7d32] px-3 py-1.5 rounded-full border border-[#a5d6a7]">
-      <span id="user-role-label">사용자</span>: <span id="user-name-label">미정</span>
+
+    <div class="flex items-center gap-2">
+      <!-- 선생님 전용 강제 게임 종료 버튼 -->
+      <button id="teacher-force-end-btn" onclick="forceEndGameByTeacher()" class="hidden px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow transition flex items-center gap-1">
+        <span>🛑</span> 게임 종료
+      </button>
+
+      <div id="header-user-tag" class="hidden text-sm bg-[#e8f5e9] text-[#2e7d32] px-3 py-1.5 rounded-full border border-[#a5d6a7]">
+        <span id="user-role-label">사용자</span>: <span id="user-name-label">미정</span>
+      </div>
     </div>
   </header>
 
@@ -185,14 +202,6 @@
           </button>
         </div>
       </div>
-
-      <!-- 우측 하단 Gemini 로고 -->
-      <div class="flex items-center justify-end gap-1.5 pt-2 text-slate-400 text-xs">
-        <svg class="w-4 h-4 text-purple-600" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 24C12 17.3726 17.3726 12 24 12C17.3726 12 12 6.62742 12 0C12 6.62742 6.62742 12 0 12C6.62742 12 12 17.3726 12 24Z"/>
-        </svg>
-        <span class="font-bold text-slate-500">Powered by Gemini</span>
-      </div>
     </section>
 
     <!-- 2. 교사 대기실 -->
@@ -228,10 +237,6 @@
             <div id="student-list-container" class="flex flex-wrap gap-2 min-h-[80px] max-h-40 overflow-y-auto p-3 bg-[#fdfbf7] rounded-xl border border-dashed border-[#d9c4a5] items-center">
               <span class="text-xs sm:text-sm text-slate-400 w-full text-center py-2">아직 접속한 학생이 없습니다.</span>
             </div>
-
-            <button onclick="startGameByTeacher()" class="w-full py-4 bg-[#ff7a38] hover:bg-[#e86624] text-white text-xl sm:text-2xl rounded-2xl shadow-lg border-b-4 border-[#c74c10] transition flex items-center justify-center gap-2">
-              <span>🚀</span> 게임 시작하기
-            </button>
           </div>
 
           <!-- 게임 세부 설정 영역 -->
@@ -251,7 +256,7 @@
               </div>
             </div>
 
-            <!-- 👥 그리는 친구 선택 -->
+            <!-- 👥 그리는 친구 선택 복구 -->
             <div>
               <label class="block text-xs text-slate-600 mb-1.5 font-bold">👥 그리는 친구</label>
               <div id="painters-options" class="flex flex-wrap gap-2">
@@ -276,7 +281,6 @@
                 <button type="button" onclick="selectNextRoundMode('manual')" class="px-3 py-1.5 rounded-xl border border-[#ff7a38] text-xs font-bold text-white bg-[#ff7a38] shadow transition next-round-btn" data-value="manual">선생님이 누르기</button>
                 <button type="button" onclick="selectNextRoundMode('auto5')" class="px-3 py-1.5 rounded-xl border border-[#d9c4a5] text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 transition next-round-btn" data-value="auto5">자동 5초</button>
                 <button type="button" onclick="selectNextRoundMode('auto8')" class="px-3 py-1.5 rounded-xl border border-[#d9c4a5] text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 transition next-round-btn" data-value="auto8">자동 8초</button>
-                <button type="button" onclick="selectNextRoundMode('auto10')" class="px-3 py-1.5 rounded-xl border border-[#d9c4a5] text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 transition next-round-btn" data-value="auto10">자동 10초</button>
               </div>
             </div>
 
@@ -315,6 +319,22 @@
                 <label class="flex items-center space-x-1.5 px-3 py-1.5 bg-[#fdfbf7] rounded-xl border border-[#d9c4a5] cursor-pointer text-xs font-bold text-slate-700">
                   <input type="checkbox" name="quiz-category" value="food" onchange="updateSettings()" class="w-4 h-4 accent-[#ff7a38]">
                   <span>음식/간식</span>
+                </label>
+                <label class="flex items-center space-x-1.5 px-3 py-1.5 bg-[#fdfbf7] rounded-xl border border-[#d9c4a5] cursor-pointer text-xs font-bold text-slate-700">
+                  <input type="checkbox" name="quiz-category" value="sports" onchange="updateSettings()" class="w-4 h-4 accent-[#ff7a38]">
+                  <span>스포츠/운동</span>
+                </label>
+                <label class="flex items-center space-x-1.5 px-3 py-1.5 bg-[#fdfbf7] rounded-xl border border-[#d9c4a5] cursor-pointer text-xs font-bold text-slate-700">
+                  <input type="checkbox" name="quiz-category" value="jobs" onchange="updateSettings()" class="w-4 h-4 accent-[#ff7a38]">
+                  <span>직업/인물</span>
+                </label>
+                <label class="flex items-center space-x-1.5 px-3 py-1.5 bg-[#fdfbf7] rounded-xl border border-[#d9c4a5] cursor-pointer text-xs font-bold text-slate-700">
+                  <input type="checkbox" name="quiz-category" value="places" onchange="updateSettings()" class="w-4 h-4 accent-[#ff7a38]">
+                  <span>장소/건물</span>
+                </label>
+                <label class="flex items-center space-x-1.5 px-3 py-1.5 bg-[#fdfbf7] rounded-xl border border-[#d9c4a5] cursor-pointer text-xs font-bold text-slate-700">
+                  <input type="checkbox" name="quiz-category" value="nature" onchange="updateSettings()" class="w-4 h-4 accent-[#ff7a38]">
+                  <span>자연/우주</span>
                 </label>
               </div>
 
@@ -379,18 +399,16 @@
           </div>
           <div class="flex items-center space-x-1.5">
             <span class="text-[#a5d6a7] text-xs sm:text-sm">⏱️ 남은 시간</span>
-            <span id="game-timer-display" class="bg-[#ff7a38] text-white px-3 py-0.5 rounded-full text-base border-2 border-[#d96628] shadow">00:20</span>
+            <span id="game-timer-display" class="bg-[#ff7a38] text-white px-3 py-0.5 rounded-full text-base border-2 border-[#d96628] shadow">00:30</span>
           </div>
           <div class="flex items-center space-x-1.5 bg-[#1c3b22] px-3 py-1 rounded-xl border border-[#3e6b47]">
             <span class="text-[#a5d6a7]">🔑 방 코드</span>
             <span id="game-room-code-display" class="text-[#ffe082]">1234</span>
           </div>
-          <div id="teacher-force-end-container" class="hidden">
-            <button onclick="finishGameFinal()" class="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black shadow border border-rose-400">
-              🛑 게임 종료
-            </button>
-          </div>
         </div>
+
+        <!-- 점수 현황 스코어보드 -->
+        <div id="game-scoreboard" class="flex flex-wrap gap-2 pt-2 border-t border-[#3b6643] text-xs"></div>
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
@@ -493,6 +511,9 @@
             <p id="round-result-solver" class="text-xl sm:text-2xl text-[#ff7a38] font-black leading-snug">
               OO님이 맞추셨어요!
             </p>
+            <p id="round-result-earned-score" class="text-base text-emerald-600 font-black">
+              +0점 획득!
+            </p>
             <p id="round-result-keyword" class="text-lg text-slate-700 font-bold leading-normal">
               제시어는 [대한민국] 였답니다.
             </p>
@@ -505,29 +526,54 @@
         </div>
 
         <div id="next-round-btn-container" class="pt-1">
-          <button id="next-round-btn-el" onclick="nextRoundByTeacher()" class="w-full py-3.5 bg-[#ff7a38] hover:bg-[#e86624] text-white text-lg rounded-2xl shadow-lg border-b-4 border-[#c74c10] transition">
+          <button onclick="nextRoundByTeacher()" class="w-full py-3.5 bg-[#ff7a38] hover:bg-[#e86624] text-white text-lg rounded-2xl shadow-lg border-b-4 border-[#c74c10] transition">
             ➡️ 다음 라운드로 넘기기
           </button>
         </div>
       </div>
     </div>
 
-    <!-- 최종 순위 시상식 모달 (3등 -> 2등 -> 1등 순서 공개) -->
-    <div id="final-leaderboard-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-lg z-50 flex items-center justify-center p-4">
-      <div class="bg-[#fffdf7] border-4 border-[#5c3a21] rounded-3xl p-6 sm:p-8 max-w-xl w-full text-center space-y-6 shadow-2xl animate-slide-up relative">
-        <div class="space-y-1">
-          <span class="text-5xl">🏆</span>
-          <h2 class="text-3xl sm:text-4xl text-[#234d2b] font-black">최종 게임 결과</h2>
-          <p class="text-slate-500 text-sm font-bold">축하합니다! 최고의 피카소는 누구일까요?</p>
+    <!-- 🏆 최종 시상식 모달 (모든 라운드 완료 시 시차 애니메이션) -->
+    <div id="final-rank-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-lg z-50 flex items-center justify-center p-4">
+      <div class="bg-[#fffdf7] border-4 border-[#ff7a38] rounded-3xl p-6 sm:p-8 max-w-lg w-full text-center relative shadow-2xl space-y-6 animate-slide-up">
+        <div>
+          <span class="text-5xl block mb-2">🏆</span>
+          <h2 class="text-3xl sm:text-4xl text-[#234d2b] font-black">최종 랭킹 발표!</h2>
+          <p class="text-slate-500 text-sm mt-1">모든 라운드가 종료되었습니다.</p>
         </div>
 
-        <!-- 3등 -> 2등 -> 1등 순서 카드 컨테이너 -->
-        <div id="podium-cards-container" class="space-y-3 pt-2">
-          <!-- JS에서 3등, 2등, 1등 카드가 시차 적용되어 랜더링됩니다 -->
+        <!-- 3등 -> 2등 -> 1등 애니메이션 연출 영역 -->
+        <div id="ranking-cards-container" class="space-y-3">
+          <!-- 3등 카드 -->
+          <div id="rank-card-3" class="hidden p-3.5 bg-amber-50 border-2 border-amber-300 rounded-2xl flex items-center justify-between shadow animate-pop-in">
+            <div class="flex items-center space-x-3">
+              <span class="text-3xl">🥉</span>
+              <span id="rank-name-3" class="text-lg font-black text-amber-800">3등 닉네임</span>
+            </div>
+            <span id="rank-score-3" class="text-xl font-black text-amber-700">0점</span>
+          </div>
+
+          <!-- 2등 카드 -->
+          <div id="rank-card-2" class="hidden p-4 bg-slate-100 border-2 border-slate-300 rounded-2xl flex items-center justify-between shadow animate-pop-in">
+            <div class="flex items-center space-x-3">
+              <span class="text-4xl">🥈</span>
+              <span id="rank-name-2" class="text-xl font-black text-slate-800">2등 닉네임</span>
+            </div>
+            <span id="rank-score-2" class="text-2xl font-black text-slate-700">0점</span>
+          </div>
+
+          <!-- 1등 카드 -->
+          <div id="rank-card-1" class="hidden p-5 bg-yellow-100 border-4 border-yellow-400 rounded-2xl flex items-center justify-between shadow-xl animate-pop-in">
+            <div class="flex items-center space-x-3">
+              <span class="text-5xl">🥇</span>
+              <span id="rank-name-1" class="text-2xl font-black text-yellow-900">1등 닉네임</span>
+            </div>
+            <span id="rank-score-1" class="text-3xl font-black text-amber-600">0점</span>
+          </div>
         </div>
 
-        <div class="pt-4 border-t border-[#e5d7c3]">
-          <button onclick="goHome()" class="w-full py-3.5 bg-[#234d2b] hover:bg-[#19381f] text-white text-lg rounded-2xl shadow-lg border-b-4 border-[#122916] transition">
+        <div class="pt-2">
+          <button onclick="goHome()" class="w-full py-3.5 bg-[#234d2b] hover:bg-[#1a3a20] text-white text-lg rounded-2xl shadow font-bold">
             🏠 메인 화면으로 돌아가기
           </button>
         </div>
@@ -555,13 +601,13 @@
     let roomCode = '';
     let studentList = [];
     let roomUnsubscribe = null;
-    let roomData = null;
-    
-    // 세부 설정 변수
+    let roomData = null; // roomData 변수를 상단 스코프에 선언
+
+    // 세부 설정 변수를 최상단 스코프에 미리 선언 (ReferenceError 해결)
     let gameSettings = { 
       totalRounds: 5, 
       painters: 1, 
-      timer: 20, 
+      timer: 30, 
       nextRoundMode: 'manual', 
       hintMode: 'always', 
       keywordMode: 'preset',
@@ -574,19 +620,74 @@
     let currentLineWidth = 5;
     let timerInterval = null;
     let timerStarted = false;
-    let remainingTime = 20;
+    let remainingTime = 30;
     let introShownForRound = null;
     let isLastSpurt = false;
 
-    // 제시어 기본 목록
+    // 대폭 풍부해진 제시어 카테고리 목록 (중복 완화 및 추가 카테고리)
     const keywordPresets = {
-      animal: ["호랑이", "사자", "토끼", "강아지", "고양이", "코끼리", "기린", "펭귄", "장미", "해바라기"],
-      object: ["연필", "지우개", "공책", "책상", "의자", "시계", "가방", "가위", "필통", "자"],
-      history: ["첨성대", "경복궁", "거북선", "훈민정음", "다보탑", "석굴암", "왕관", "자격루"],
-      food: ["떡볶이", "김밥", "라면", "피자", "치킨", "아이스크림", "햄버거", "초콜릿", "사과"]
+      animal: [
+        "호랑이", "사자", "토끼", "강아지", "고양이", "코끼리", "기린", "펭귄", "장미", "해바라기",
+        "다람쥐", "얼룩말", "하늘소", "독수리", "올빼미", "캥거루", "돌고래", "상어", "문어", "오징어",
+        "개구리", "카멜레온", "공룡", "선인장", "민들레", "튤립", "소나무", "단풍잎", "나비", "꿀벌",
+        "여우", "늑대", "낙타", "북극곰", "플라밍고", "수달", "치타", "하마", "코뿔소", "고슴도치"
+      ],
+      object: [
+        "연필", "지우개", "공책", "책상", "의자", "시계", "가방", "가위", "필통", "자",
+        "스마트폰", "컴퓨터", "마우스", "키보드", "선풍기", "냉장고", "세탁기", "청소기", "안경", "우산",
+        "신발", "모자", "자전거", "자동차", "비행기", "기차", "헬리콥터", "텔레비전", "거울", "칫솔",
+        "드라이기", "헤드폰", "텀블러", "다리미", "드론", "유모차", "망원경", "돋보기", "계산기", "손전등"
+      ],
+      history: [
+        "첨성대", "경복궁", "거북선", "훈민정음", "다보탑", "석굴암", "왕관", "자격루",
+        "측우기", "팔만대장경", "한복", "갓", "짚신", "돌하르방", "해시계", "고인돌", "상투", "가마",
+        "무령왕릉", "화차", "신기전", "비차", "앙부일구", "혼천의", "창덕궁", "덕수궁", "성균관", "암행어사"
+      ],
+      food: [
+        "떡볶이", "김밥", "라면", "피자", "치킨", "아이스크림", "햄버거", "초콜릿", "사과",
+        "바나나", "수박", "딸기", "포도", "오렌지", "복숭아", "파인애플", "돈가스", "짜장면", "짬뽕",
+        "탕수육", "비빔밥", "삼겹살", "계란후라이", "붕어빵", "호빵", "감자튀김", "핫도그", "치즈", "케이크",
+        "마카롱", "와플", "파스타", "초밥", "스테이크", "타코야끼", "샤브샤브", "감자전", "파전", "식혜"
+      ],
+      sports: [
+        "축구", "농구", "야구", "배구", "테니스", "배드민턴", "탁구", "수영", "태권도", "양궁",
+        "골프", "피겨스케이팅", "쇼트트랙", "스노보드", "마라톤", "체조", "볼링", "펜싱", "유도", "역도",
+        "클라이밍", "서핑", "카누", "승마", "레슬링", "줄다리기", "피구", "족구", "인라인스케이트", "스케이트보드"
+      ],
+      jobs: [
+        "선생님", "경찰관", "소방관", "의사", "간호사", "요리사", "화가", "피아니스트", "가수", "배우",
+        "운동선수", "과학자", "비행기조종사", "승무원", "판사", "변호사", "건축가", "사진작가", "미용사", "농부",
+        "어부", "우주비행사", "마술사", "유튜버", "탐정", "수의사", "제빵사", "웹툰작가", "기자", "아나운서"
+      ],
+      places: [
+        "학교", "병원", "경찰서", "소방서", "도서관", "박물관", "미술관", "공항", "기차역", "놀이공원",
+        "수족관", "동물원", "영화관", "백화점", "마트", "우체국", "은행", "공원", "해수욕장", "캠핑장",
+        "경기장", "수영장", "카페", "식당", "제과점", "약국", "전망대", "등대", "주유소", "남산타워"
+      ],
+      nature: [
+        "화산", "지진", "번개", "무지개", "오로라", "태풍", "빙하", "사막", "동굴", "폭포",
+        "태양", "달", "지구", "토성", "목성", "혜성", "블랙홀", "은하수", "인공위성", "우주선",
+        "남극", "북극", "밀림", "열대우림", "산맥", "섬", "해구", "갯벌", "단풍", "눈사람"
+      ]
     };
 
-    // 캔버스 고해상도 DPI 보정 함수
+    // 캔버스 컨트롤 함수
+    function setDrawColor(color) {
+      currentColor = color;
+      currentLineWidth = 5;
+    }
+
+    function setEraserMode() {
+      currentColor = '#1c3b22';
+      currentLineWidth = 20;
+    }
+
+    function triggerClearCanvas() {
+      if (!isCurrentDrawer()) return;
+      pushStroke({ type: 'clear' });
+    }
+
+    // 캔버스 고해상도 반응형 보정
     function resizeCanvasResolution() {
       if (!canvas) return;
       const rect = canvas.getBoundingClientRect();
@@ -620,7 +721,6 @@
 
       const urlParams = new URLSearchParams(window.location.search);
       let roomParam = urlParams.get('room');
-      
       if (!roomParam && window.location.hash) {
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         roomParam = hashParams.get('room');
@@ -799,11 +899,7 @@
 
       try {
         if (window.QRCode) {
-          new QRCode(container, {
-            text: targetUrl,
-            width: 140,
-            height: 140
-          });
+          new QRCode(container, { text: targetUrl, width: 140, height: 140 });
         } else {
           container.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(targetUrl)}" alt="QR Code" class="rounded-xl" />`;
         }
@@ -825,12 +921,11 @@
       document.getElementById('user-name-label').innerText = teacherName;
       document.getElementById('teacher-room-code').innerText = roomCode;
       document.getElementById('modal-room-code').innerText = roomCode;
+      document.getElementById('teacher-force-end-btn').classList.remove('hidden');
 
       showScreen('screen-teacher-lobby');
 
-      setTimeout(() => {
-        renderQrCode('teacher-qrcode', roomCode);
-      }, 100);
+      setTimeout(() => { renderQrCode('teacher-qrcode', roomCode); }, 100);
 
       const initialRoomState = {
         roomCode: roomCode,
@@ -852,8 +947,7 @@
       if (window.FirebaseApp && window.FirebaseApp.db) {
         try {
           const { doc, setDoc } = window.FirebaseApp;
-          const roomRef = doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode);
-          await setDoc(roomRef, initialRoomState);
+          await setDoc(doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode), initialRoomState);
         } catch (err) {
           console.warn("Firestore error:", err);
         }
@@ -887,8 +981,12 @@
             document.getElementById('student-waiting-teacher-title').innerText = `${targetTeacher}의 방에 접속하였습니다.`;
 
             let list = data.students || [];
-            if (!list.includes(studentName)) list.push(studentName);
-            await updateDoc(roomRef, { students: list });
+            let scores = data.scores || {};
+            if (!list.includes(studentName)) {
+              list.push(studentName);
+              scores[studentName] = 0;
+            }
+            await updateDoc(roomRef, { students: list, scores: scores });
           } else {
             alert("존재하지 않는 방 코드입니다. 다시 확인해주세요!");
             return;
@@ -904,18 +1002,22 @@
 
     async function closeRoomByTeacher() {
       if (!confirm("정말 방을 닫으시겠습니까? 모든 학생 접속이 종료됩니다.")) return;
-
       if (window.FirebaseApp && window.FirebaseApp.db && roomCode) {
         try {
           const { doc, updateDoc } = window.FirebaseApp;
-          const roomRef = doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode);
-          await updateDoc(roomRef, { status: 'closed' });
+          await updateDoc(doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode), { status: 'closed' });
         } catch (err) {
           console.warn("방 닫기 오류:", err);
         }
       }
       if (roomUnsubscribe) roomUnsubscribe();
       goHome();
+    }
+
+    async function forceEndGameByTeacher() {
+      if (!isTeacher) return;
+      if (!confirm("현재 진행 중인 게임을 완전히 종료하고 메인으로 가시겠습니까?")) return;
+      closeRoomByTeacher();
     }
 
     async function leaveRoom() {
@@ -975,12 +1077,14 @@
           } else {
             container.innerHTML = studentList.map(s => `
               <span class="px-3 py-1.5 bg-[#e8f5e9] text-[#2e7d32] rounded-xl text-xs sm:text-sm font-bold border border-[#a5d6a7]">
-                👤 ${s}
+                👤 ${s} (${data.scores ? (data.scores[s] || 0) : 0}점)
               </span>
             `).join('');
           }
         }
       }
+
+      updateScoreboard(data.scores || {});
 
       if (data.status === 'playing') {
         setupGameScreen(data);
@@ -991,8 +1095,19 @@
       } else if (data.status === 'round_ended') {
         showRoundResultModal(data);
       } else if (data.status === 'game_finished') {
-        showFinalLeaderboardModal(data);
+        showFinalRankModal(data.scores || {});
       }
+    }
+
+    function updateScoreboard(scores) {
+      const box = document.getElementById('game-scoreboard');
+      if (!box) return;
+      box.innerHTML = studentList.map(s => `
+        <div class="px-2.5 py-1 bg-[#1c3b22] border border-[#3e6b47] rounded-lg text-white font-bold flex items-center gap-1">
+          <span>👤 ${s}:</span>
+          <span class="text-[#ffe082]">${scores[s] || 0}점</span>
+        </div>
+      `).join('');
     }
 
     async function startGameByTeacher() {
@@ -1019,14 +1134,16 @@
         const pool = keywordPresets[catKey] || ["사과"];
         selectedKeyword = pool[Math.floor(Math.random() * pool.length)];
 
-        const catNames = { animal: "동물/식물", object: "학용품/사물", history: "역사/문화재", food: "음식/간식" };
+        const catNames = { 
+          animal: "동물/식물", object: "학용품/사물", history: "역사/문화재", food: "음식/간식",
+          sports: "스포츠/운동", jobs: "직업/인물", places: "장소/건물", nature: "자연/우주"
+        };
         categoryName = catNames[catKey] || "일반";
       }
 
       const randomDrawer = studentList[Math.floor(Math.random() * studentList.length)];
-
       const initialScores = {};
-      studentList.forEach(s => { initialScores[s] = 0; });
+      studentList.forEach(s => initialScores[s] = 0);
 
       const updateData = {
         status: 'playing',
@@ -1053,11 +1170,9 @@
     }
 
     let strokeThrottleTimeout = null;
-    let pendingStrokesBuffer = [];
 
     async function pushStroke(stroke) {
       if (!roomCode || !window.FirebaseApp || !window.FirebaseApp.db) return;
-      
       const strokes = roomData.strokes || [];
       strokes.push(stroke);
       roomData.strokes = strokes;
@@ -1066,19 +1181,16 @@
         redrawStrokes();
       }
 
-      pendingStrokesBuffer.push(stroke);
-
       if (!strokeThrottleTimeout) {
         strokeThrottleTimeout = setTimeout(async () => {
           strokeThrottleTimeout = null;
           try {
             const { doc, updateDoc } = window.FirebaseApp;
-            const roomRef = doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode);
-            await updateDoc(roomRef, { strokes: roomData.strokes });
+            await updateDoc(doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode), { strokes: roomData.strokes });
           } catch (err) {
             console.warn("Stroke sync error:", err);
           }
-        }, 100);
+        }, 80);
       }
     }
 
@@ -1094,15 +1206,6 @@
       document.getElementById('status-current-drawer').innerText = data.drawer || '미정';
       document.getElementById('game-round-info').innerText = `${data.currentRound || 1} / ${data.settings?.totalRounds || 5}`;
       
-      const teacherEndBtn = document.getElementById('teacher-force-end-container');
-      if (teacherEndBtn) {
-        if (isTeacher) {
-          teacherEndBtn.classList.remove('hidden');
-        } else {
-          teacherEndBtn.classList.add('hidden');
-        }
-      }
-
       const kwDisplay = document.getElementById('game-keyword-display');
       const chatInputContainer = document.getElementById('chat-input-container');
       const chatInput = document.getElementById('chat-input');
@@ -1192,9 +1295,7 @@
         if (overlay && text) {
           text.innerText = `${data.drawer}님이 그릴 수 있어요!`;
           overlay.classList.remove('hidden');
-          setTimeout(() => {
-            overlay.classList.add('hidden');
-          }, 2000);
+          setTimeout(() => { overlay.classList.add('hidden'); }, 2000);
         }
       }
 
@@ -1208,6 +1309,17 @@
 
     function isCurrentDrawer() {
       return !isTeacher && roomData && roomData.drawer === studentName;
+    }
+
+    function getCanvasCoordinates(e) {
+      if (!canvas) return { x: 0, y: 0 };
+      const rect = canvas.getBoundingClientRect();
+      const clientX = e.clientX !== undefined ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+      const clientY = e.clientY !== undefined ? e.clientY : (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+      return {
+        x: Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)),
+        y: Math.max(0, Math.min(1, (clientY - rect.top) / rect.height))
+      };
     }
 
     function startDrawing(e) {
@@ -1252,27 +1364,6 @@
       pushStroke({ type: 'end' });
     }
 
-    function triggerClearCanvas() {
-      if (!isCurrentDrawer()) return;
-      pushStroke({ type: 'clear' });
-    }
-
-    function setEraserMode() {
-      currentColor = '#1c3b22';
-      currentLineWidth = 20;
-    }
-
-    function getCanvasCoordinates(e) {
-      if (!canvas) return { x: 0, y: 0 };
-      const rect = canvas.getBoundingClientRect();
-      const clientX = e.clientX !== undefined ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
-      const clientY = e.clientY !== undefined ? e.clientY : (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
-      return {
-        x: Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)),
-        y: Math.max(0, Math.min(1, (clientY - rect.top) / rect.height))
-      };
-    }
-
     function redrawStrokes() {
       if (!ctx || !canvas) return;
       const rect = canvas.getBoundingClientRect();
@@ -1282,7 +1373,7 @@
       ctx.fillStyle = '#1c3b22';
       ctx.fillRect(0, 0, w, h);
 
-      if (!roomData || !roomData.strokes) return;
+      if (typeof roomData === 'undefined' || !roomData || !roomData.strokes) return;
 
       ctx.beginPath();
       roomData.strokes.forEach(s => {
@@ -1306,14 +1397,9 @@
       });
     }
 
-    function setDrawColor(color) {
-      currentColor = color;
-      currentLineWidth = 5;
-    }
-
     function startLocalTimer() {
       if (timerInterval) clearInterval(timerInterval);
-      remainingTime = roomData?.settings?.timer || 20;
+      remainingTime = roomData?.settings?.timer || 30;
       updateTimerDisplay(remainingTime);
 
       isLastSpurt = false;
@@ -1336,7 +1422,7 @@
         if (remainingTime <= 0) {
           clearInterval(timerInterval);
           document.getElementById('last-spurt-overlay').classList.add('hidden');
-          if (isTeacher) endRound(null, '시간 초과!');
+          if (isTeacher) endRound(null, '시간 초과!', 0);
         }
       }, 1000);
     }
@@ -1349,8 +1435,7 @@
       display.innerText = `${m}:${s}`;
     }
 
-    window.closeTeacherStartModal = closeTeacherStartModal;
-
+    // 정답 입력 및 점수 산출
     async function sendChat() {
       const input = document.getElementById('chat-input');
       const text = input ? input.value.trim() : '';
@@ -1381,52 +1466,20 @@
       }
 
       if (isCorrect) {
-        endRound(studentName, '정답!');
+        // 시간에 비례한 dynamic score (10 ~ 99점)
+        const totalTimer = roomData?.settings?.timer || 30;
+        const ratio = Math.max(0, Math.min(1, remainingTime / totalTimer));
+        const earnedScore = Math.floor(10 + ratio * 89);
+        endRound(studentName, '정답!', earnedScore);
       }
     }
 
     async function forceCorrectAnswer(senderName) {
       if (!isTeacher) return;
-      endRound(senderName, '선생님 인정 정답!');
-    }
-
-    function calculateTimeBasedScore() {
-      const totalTimerSec = roomData?.settings?.timer || 20;
-      const timeLeft = Math.max(1, remainingTime);
-      const ratio = Math.min(1, Math.max(0, timeLeft / totalTimerSec));
-      return Math.round(10 + (89 * ratio));
-    }
-
-    async function endRound(solverName, message) {
-      if (timerInterval) clearInterval(timerInterval);
-
-      let earnedPoints = 0;
-      let updatedScores = { ...(roomData?.scores || {}) };
-
-      if (solverName) {
-        earnedPoints = calculateTimeBasedScore();
-        updatedScores[solverName] = (updatedScores[solverName] || 0) + earnedPoints;
-      }
-
-      const updateData = {
-        status: 'round_ended',
-        solver: solverName,
-        earnedScore: earnedPoints,
-        scores: updatedScores,
-        endMessage: message
-      };
-
-      if (window.FirebaseApp && window.FirebaseApp.db) {
-        try {
-          const { doc, updateDoc } = window.FirebaseApp;
-          await updateDoc(doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode), updateData);
-        } catch (e) {
-          console.warn("End round error:", e);
-        }
-      } else {
-        roomData = { ...roomData, ...updateData };
-        handleRoomDataUpdate(roomData);
-      }
+      const totalTimer = roomData?.settings?.timer || 30;
+      const ratio = Math.max(0, Math.min(1, remainingTime / totalTimer));
+      const earnedScore = Math.floor(10 + ratio * 89);
+      endRound(senderName, '선생님 인정 정답!', earnedScore);
     }
 
     function renderChatMessages(chatList) {
@@ -1455,6 +1508,35 @@
       box.scrollTop = box.scrollHeight;
     }
 
+    async function endRound(solverName, message, earnedScore = 0) {
+      if (timerInterval) clearInterval(timerInterval);
+
+      const scores = roomData.scores || {};
+      if (solverName) {
+        scores[solverName] = (scores[solverName] || 0) + earnedScore;
+      }
+
+      const updateData = {
+        status: 'round_ended',
+        solver: solverName,
+        endMessage: message,
+        earnedScore: earnedScore,
+        scores: scores
+      };
+
+      if (window.FirebaseApp && window.FirebaseApp.db) {
+        try {
+          const { doc, updateDoc } = window.FirebaseApp;
+          await updateDoc(doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode), updateData);
+        } catch (e) {
+          console.warn("End round error:", e);
+        }
+      } else {
+        roomData = { ...roomData, ...updateData };
+        handleRoomDataUpdate(roomData);
+      }
+    }
+
     function showRoundResultModal(data) {
       const modal = document.getElementById('round-result-modal');
       if (!modal) return;
@@ -1462,14 +1544,18 @@
 
       const title = document.getElementById('round-result-title');
       const solver = document.getElementById('round-result-solver');
+      const earned = document.getElementById('round-result-earned-score');
       const keyword = document.getElementById('round-result-keyword');
 
       if (data.solver) {
         title.innerText = "🎉 정답을 맞췄어요!";
-        solver.innerHTML = `${data.solver}님이 맞추셨어요!<br><span class="text-lg text-emerald-600 font-bold">⏱️ +${data.earnedScore || 0}점 획득!</span>`;
+        solver.innerText = `${data.solver}님이 맞추셨어요!`;
+        earned.innerText = `+${data.earnedScore || 0}점 획득!`;
+        earned.classList.remove('hidden');
       } else {
         title.innerText = "⏱️ 라운드가 종료되었어요!";
         solver.innerText = "아쉽게 아무도 맞추지 못했어요.";
+        earned.classList.add('hidden');
       }
       keyword.innerText = `제시어는 [${data.keyword}] 였답니다.`;
 
@@ -1485,17 +1571,7 @@
       }, 50);
 
       const btnContainer = document.getElementById('next-round-btn-container');
-      const nextBtnEl = document.getElementById('next-round-btn-el');
       const mode = data.settings?.nextRoundMode || 'manual';
-
-      const currentR = data.currentRound || 1;
-      const maxR = data.settings?.totalRounds || 5;
-
-      if (currentR >= maxR) {
-        if (nextBtnEl) nextBtnEl.innerText = "🏆 최종 결과 확인하기";
-      } else {
-        if (nextBtnEl) nextBtnEl.innerText = "➡️ 다음 라운드로 넘기기";
-      }
 
       if (isTeacher && mode === 'manual') {
         btnContainer.classList.remove('hidden');
@@ -1504,23 +1580,30 @@
         if (isTeacher) {
           let delay = 5000;
           if (mode === 'auto8') delay = 8000;
-          if (mode === 'auto10') delay = 10000;
-          setTimeout(() => {
-            nextRoundByTeacher();
-          }, delay);
+          setTimeout(() => { nextRoundByTeacher(); }, delay);
         }
       }
     }
 
+    // 다음 라운드 진입 및 교대 지정
     async function nextRoundByTeacher() {
       const modal = document.getElementById('round-result-modal');
       if (modal) modal.classList.add('hidden');
 
-      const currentR = roomData?.currentRound || 1;
-      const maxR = roomData?.settings?.totalRounds || 5;
+      const currentRoundNum = roomData?.currentRound || 1;
+      const totalRounds = roomData?.settings?.totalRounds || 5;
 
-      if (currentR >= maxR) {
-        await finishGameFinal();
+      // 🎴 총 라운드 완료 체크 (최종 시상식 전환)
+      if (currentRoundNum >= totalRounds) {
+        const updateData = { status: 'game_finished' };
+        if (window.FirebaseApp && window.FirebaseApp.db) {
+          try {
+            const { doc, updateDoc } = window.FirebaseApp;
+            await updateDoc(doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode), updateData);
+          } catch (e) {
+            console.warn("최종 종결 업데이트 오류:", e);
+          }
+        }
         return;
       }
 
@@ -1542,19 +1625,28 @@
         const pool = keywordPresets[catKey] || ["사과"];
         selectedKeyword = pool[Math.floor(Math.random() * pool.length)];
 
-        const catNames = { animal: "동물/식물", object: "학용품/사물", history: "역사/문화재", food: "음식/간식" };
+        const catNames = { 
+          animal: "동물/식물", object: "학용품/사물", history: "역사/문화재", food: "음식/간식",
+          sports: "스포츠/운동", jobs: "직업/인물", places: "장소/건물", nature: "자연/우주"
+        };
         categoryName = catNames[catKey] || "일반";
       }
 
-      const randomDrawer = studentList[Math.floor(Math.random() * studentList.length)];
-      const nextRoundNum = currentR + 1;
+      // 출제자 지정 (2명일 경우 번갈아가면서 교대)
+      let nextDrawer = '';
+      if (studentList.length === 2) {
+        const currentDrawer = roomData?.drawer;
+        nextDrawer = studentList.find(s => s !== currentDrawer) || studentList[0];
+      } else {
+        nextDrawer = studentList[Math.floor(Math.random() * studentList.length)];
+      }
 
       timerStarted = false;
 
       const updateData = {
         status: 'playing',
-        currentRound: nextRoundNum,
-        drawer: randomDrawer,
+        currentRound: currentRoundNum + 1,
+        drawer: nextDrawer,
         keyword: selectedKeyword,
         categoryName: categoryName,
         strokes: [],
@@ -1573,78 +1665,63 @@
       }
     }
 
-    async function finishGameFinal() {
-      if (timerInterval) clearInterval(timerInterval);
-      const updateData = { status: 'game_finished' };
-
-      if (window.FirebaseApp && window.FirebaseApp.db && roomCode) {
-        try {
-          const { doc, updateDoc } = window.FirebaseApp;
-          await updateDoc(doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode), updateData);
-        } catch (e) {
-          console.warn("Final game finish sync error:", e);
-        }
-      } else {
-        roomData = { ...roomData, ...updateData };
-        showFinalLeaderboardModal(roomData);
-      }
-    }
-
-    function showFinalLeaderboardModal(data) {
-      const modal = document.getElementById('final-leaderboard-modal');
+    // 🏆 최종 시상식 모달 렌더링 (3등 -> 2등 -> 1등 차례대로 시차 연출)
+    function showFinalRankModal(scores) {
+      showScreen('screen-home'); // 이전 화면 가리기
+      const modal = document.getElementById('final-rank-modal');
       if (!modal) return;
       modal.classList.remove('hidden');
 
-      const scoresObj = data.scores || {};
-      const sorted = Object.keys(scoresObj)
-        .map(name => ({ name, score: scoresObj[name] || 0 }))
+      // 점수 순 내림차순 정렬
+      const sorted = Object.entries(scores)
+        .map(([name, score]) => ({ name, score }))
         .sort((a, b) => b.score - a.score);
 
-      const top3 = sorted.slice(0, 3);
-      const container = document.getElementById('podium-cards-container');
-      if (!container) return;
-      container.innerHTML = '';
+      const card3 = document.getElementById('rank-card-3');
+      const card2 = document.getElementById('rank-card-2');
+      const card1 = document.getElementById('rank-card-1');
 
-      const renderOrder = [];
-      if (top3.length >= 3) renderOrder.push({ rank: 3, icon: '🥉', color: 'border-amber-700 bg-amber-50 text-amber-900', ...top3[2] });
-      if (top3.length >= 2) renderOrder.push({ rank: 2, icon: '🥈', color: 'border-slate-400 bg-slate-100 text-slate-800', ...top3[1] });
-      if (top3.length >= 1) renderOrder.push({ rank: 1, icon: '🥇', color: 'border-amber-400 bg-amber-100 text-amber-900 scale-105', ...top3[0] });
+      [card1, card2, card3].forEach(c => c.classList.add('hidden'));
 
-      renderOrder.forEach((item, idx) => {
-        const card = document.createElement('div');
-        card.className = `p-4 rounded-2xl border-4 ${item.color} shadow-lg flex items-center justify-between opacity-0 transition-all duration-500 transform translate-y-4`;
-        card.innerHTML = `
-          <div class="flex items-center space-x-3">
-            <span class="text-4xl">${item.icon}</span>
-            <div class="text-left">
-              <span class="text-xs font-black block text-slate-500">${item.rank}등</span>
-              <span class="text-[#234d2b] text-xl font-black">${item.name}</span>
-            </div>
-          </div>
-          <div class="text-2xl font-black text-[#ff7a38]">
-            ${item.score}점
-          </div>
-        `;
-        container.appendChild(card);
+      // 3등 -> 2등 -> 1등 순으로 짠! 등장하는 타임라인 애니메이션
+      setTimeout(() => {
+        if (sorted[2]) {
+          document.getElementById('rank-name-3').innerText = sorted[2].name;
+          document.getElementById('rank-score-3').innerText = `${sorted[2].score}점`;
+          card3.classList.remove('hidden');
+        }
+      }, 400);
 
-        setTimeout(() => {
-          card.classList.remove('opacity-0', 'translate-y-4');
-          card.classList.add('opacity-100', 'translate-y-0');
-        }, (idx + 1) * 700);
-      });
+      setTimeout(() => {
+        if (sorted[1]) {
+          document.getElementById('rank-name-2').innerText = sorted[1].name;
+          document.getElementById('rank-score-2').innerText = `${sorted[1].score}점`;
+          card2.classList.remove('hidden');
+        }
+      }, 1200);
+
+      setTimeout(() => {
+        if (sorted[0]) {
+          document.getElementById('rank-name-1').innerText = sorted[0].name;
+          document.getElementById('rank-score-1').innerText = `${sorted[0].score}점`;
+          card1.classList.remove('hidden');
+        }
+      }, 2000);
     }
 
-    window.finishGameFinal = finishGameFinal;
+    // 전역 함수 바인딩
     window.showTeacherSetup = showTeacherSetup;
     window.showStudentSetup = showStudentSetup;
     window.resetHomeForm = resetHomeForm;
     window.createTeacherRoom = createTeacherRoom;
     window.processStudentJoin = processStudentJoin;
     window.closeRoomByTeacher = closeRoomByTeacher;
+    window.forceEndGameByTeacher = forceEndGameByTeacher;
     window.leaveRoom = leaveRoom;
     window.goHome = goHome;
     window.selectRounds = selectRounds;
     window.selectPainters = selectPainters;
+    window.renderTimerOptions = renderTimerOptions;
     window.selectTimer = selectTimer;
     window.selectNextRoundMode = selectNextRoundMode;
     window.selectHintMode = selectHintMode;
@@ -1652,6 +1729,7 @@
     window.updateSettings = updateSettings;
     window.openQrModal = openQrModal;
     window.closeQrModal = closeQrModal;
+    window.closeTeacherStartModal = closeTeacherStartModal;
     window.startGameByTeacher = startGameByTeacher;
     window.nextRoundByTeacher = nextRoundByTeacher;
     window.setDrawColor = setDrawColor;
