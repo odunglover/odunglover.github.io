@@ -719,9 +719,10 @@
       ctx.beginPath();
       ctx.moveTo(coords.x * rect.width, coords.y * rect.height);
 
-      // 출제자가 처음 한 획을 그릴 때만 타이머를 시작하고 전원에게 동기화
+      // 출제자가 처음 한 획을 그릴 때 본인 로컬 타이머를 즉시 작동시키고, 전원 동기화
       if (!timerStarted && typeof roomData !== 'undefined' && !roomData.timerStarted) {
         timerStarted = true;
+        startLocalTimer();
         if (window.FirebaseApp && window.FirebaseApp.db && roomCode) {
           const { doc, updateDoc } = window.FirebaseApp;
           updateDoc(doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode), { timerStarted: true }).catch(()=>{});
@@ -1322,10 +1323,12 @@
         kwDisplay.innerText = data.keyword || '???';
         chatInputContainer.classList.add('hidden');
 
-        if (data.showIntro && introShownForRound !== `${data.currentRound}_teacher`) {
-          introShownForRound = `${data.currentRound}_teacher`;
+        // 선생님용 라운드 시작 팝업: 라운드당 오직 1번만 뜨도록 라운드 번호 기반 체크
+        const teacherRoundKey = `round_${data.currentRound || 1}`;
+        if (data.showIntro && introShownForRound !== teacherRoundKey) {
+          introShownForRound = teacherRoundKey;
           document.getElementById('teacher-modal-keyword').innerText = data.keyword;
-          document.getElementById('teacher-modal-drawer').innerText = data.drawer;
+          document.getElementById('teacher-modal-[#drawer]' ? 'teacher-modal-drawer' : 'teacher-modal-drawer').innerText = data.drawer;
           document.getElementById('teacher-start-modal').classList.remove('hidden');
         }
       } else {
