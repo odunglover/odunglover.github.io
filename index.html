@@ -206,12 +206,38 @@
       <!-- 우측 하단 제작 정보 표기 -->
       <div class="flex flex-col items-end gap-0.5 pt-2 text-slate-400 text-xs">
         <div class="flex items-center gap-1.5">
-          <svg class="w-4 h-4 text-purple-600" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 24C12 17.3726 17.3726 12 24 12C17.3726 12 12 6.62742 12 0C12 6.62742 6.62742 12 0 12C6.62742 12 12 17.3726 12 24Z"/>
+          <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none">
+            <defs>
+              <linearGradient id="gemini-grad-base" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#EA4335"/>
+                <stop offset="50%" stop-color="#4285F4"/>
+                <stop offset="100%" stop-color="#34A853"/>
+              </linearGradient>
+              <radialGradient id="gemini-glow-red" cx="12" cy="1" r="13" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#EA4335"/>
+                <stop offset="100%" stop-color="#EA4335" stop-opacity="0"/>
+              </radialGradient>
+              <radialGradient id="gemini-glow-yellow" cx="1" cy="12" r="13" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#FBBC04"/>
+                <stop offset="100%" stop-color="#FBBC04" stop-opacity="0"/>
+              </radialGradient>
+              <radialGradient id="gemini-glow-green" cx="12" cy="23" r="13" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#34A853"/>
+                <stop offset="100%" stop-color="#34A853" stop-opacity="0"/>
+              </radialGradient>
+              <radialGradient id="gemini-glow-blue" cx="23" cy="12" r="14" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#4285F4"/>
+                <stop offset="100%" stop-color="#4285F4" stop-opacity="0"/>
+              </radialGradient>
+            </defs>
+            <path d="M12 24C12 17.3726 17.3726 12 24 12C17.3726 12 12 6.62742 12 0C12 6.62742 6.62742 12 0 12C6.62742 12 12 17.3726 12 24Z" fill="url(#gemini-grad-base)"/>
+            <path d="M12 24C12 17.3726 17.3726 12 24 12C17.3726 12 12 6.62742 12 0C12 6.62742 6.62742 12 0 12C6.62742 12 12 17.3726 12 24Z" fill="url(#gemini-glow-red)"/>
+            <path d="M12 24C12 17.3726 17.3726 12 24 12C17.3726 12 12 6.62742 12 0C12 6.62742 6.62742 12 0 12C6.62742 12 12 17.3726 12 24Z" fill="url(#gemini-glow-yellow)"/>
+            <path d="M12 24C12 17.3726 17.3726 12 24 12C17.3726 12 12 6.62742 12 0C12 6.62742 6.62742 12 0 12C6.62742 12 12 17.3726 12 24Z" fill="url(#gemini-glow-green)"/>
+            <path d="M12 24C12 17.3726 17.3726 12 24 12C17.3726 12 12 6.62742 12 0C12 6.62742 6.62742 12 0 12C6.62742 12 12 17.3726 12 24Z" fill="url(#gemini-glow-blue)"/>
           </svg>
-          <span class="font-bold text-slate-500">이 프로젝트는 Gemini와 함께 제작되었습니다.</span>
+          <span class="font-bold text-slate-500">이 프로젝트는 <span class="bg-gradient-to-r from-[#EA4335] via-[#FBBC04] via-[#34A853] to-[#4285F4] bg-clip-text text-transparent font-black">Gemini</span>와 함께 제작되었습니다.</span>
         </div>
-        <span class="text-[11px] text-slate-400 font-medium">2026년도 6학년 2반 학생 오둥이입니다만 제작</span>
       </div>
     </section>
 
@@ -369,7 +395,7 @@
       </div>
       <div class="space-y-2">
         <p id="student-waiting-teacher-title" class="text-base sm:text-lg text-slate-600 font-bold leading-snug">
-          선생님님의 방에 참여했어요.
+          선생님의 방에 참여했어요.
         </p>
         <h3 id="student-welcome-name-title" class="text-2xl sm:text-3xl text-[#234d2b] font-black leading-snug">
           학생, 어서오세요.
@@ -1147,7 +1173,7 @@
           if (snap.exists()) {
             const data = snap.data();
             let targetTeacher = data.teacherName || "선생님";
-            document.getElementById('student-waiting-teacher-title').innerText = `${targetTeacher}님의 방에 참여했어요.`;
+            document.getElementById('student-waiting-teacher-title').innerText = `${targetTeacher}의 방에 참여했어요.`;
             document.getElementById('student-welcome-name-title').innerText = `${studentName}, 어서오세요.`;
 
             let list = data.students || [];
@@ -1290,7 +1316,7 @@
       }
 
       if (data.teacherName && !isTeacher) {
-        document.getElementById('student-waiting-teacher-title').innerText = `${data.teacherName}님의 방에 참여했어요.`;
+        document.getElementById('student-waiting-teacher-title').innerText = `${data.teacherName}의 방에 참여했어요.`;
         if (studentName) {
           document.getElementById('student-welcome-name-title').innerText = `${studentName}, 어서오세요.`;
         }
