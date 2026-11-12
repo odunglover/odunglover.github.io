@@ -591,14 +591,17 @@
         </div>
 
         <div id="next-round-btn-container" class="pt-1">
-          <button id="next-round-action-btn" onclick="nextRoundByTeacher()" class="w-full py-3.5 bg-[#ff7a38] hover:bg-[#e86624] text-white text-lg rounded-2xl shadow-lg border-b-4 border-[#c74c10] transition">
-            ➡️ 다음 라운드로 넘기기
-          </button>
-        </div>
+        <button id="skip-round-btn" onclick="skipRoundByTeacher()" class="w-full py-3.5 bg-amber-600 hover:bg-amber-700 text-white text-lg rounded-2xl shadow-lg border-b-4 border-amber-800 transition mb-2">
+          ⏭️ 정답 공개 및 스킵
+        </button>
+        <button id="next-round-action-btn" onclick="nextRoundByTeacher()" class="w-full py-3.5 bg-[#ff7a38] hover:bg-[#e86624] text-white text-lg rounded-2xl shadow-lg border-b-4 border-[#c74c10] transition">
+          ➡️ 다음 라운드로 넘기기
+        </button>
       </div>
     </div>
+  </div>
 
-    <!-- 🏆 최종 시상식 모달 -->
+  <!-- 🏆 최종 시상식 모달 -->
     <div id="final-rank-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-lg z-50 flex items-center justify-center p-4">
       <div class="bg-[#fffdf7] border-4 border-[#ff7a38] rounded-3xl p-6 sm:p-8 max-w-lg w-full text-center relative shadow-2xl space-y-6 animate-slide-up">
         <div>
@@ -1908,7 +1911,11 @@
       const earnedScore = document.getElementById('round-result-earned-score');
       const keyword = document.getElementById('round-result-keyword');
 
-      if (data.solver) {
+      if (data.isSkipped) {
+        title.innerText = "스킵했어요!";
+        solver.innerText = "선생님이 문제를 스킵했어요.";
+        earnedScore.classList.add('hidden');
+      } else if (data.solver) {
         title.innerText = "🎉 정답을 맞췄어요!";
         solver.innerText = `${data.solver}님이 맞추셨어요!`;
         earnedScore.innerText = `+${data.earnedPoints || 0}점 획득!`;
@@ -1933,10 +1940,19 @@
 
       const btnContainer = document.getElementById('next-round-btn-container');
       const actionBtn = document.getElementById('next-round-action-btn');
+      const skipBtn = document.getElementById('skip-round-btn');
       const mode = data.settings?.nextRoundMode || 'manual';
       const currentRoundNum = data.currentRound || 1;
       const totalRounds = data.settings?.totalRounds || 5;
       const isLastRound = currentRoundNum >= totalRounds;
+
+      if (skipBtn) {
+        if (isTeacher && !data.isSkipped && !isLastRound) {
+          skipBtn.classList.remove('hidden');
+        } else {
+          skipBtn.classList.add('hidden');
+        }
+      }
 
       if (isLastRound) {
         actionBtn.innerText = "🏆 최종 랭킹 보기";
@@ -1955,18 +1971,43 @@
         actionBtn.onclick = nextRoundByTeacher;
       }
 
-      if (isTeacher && (mode === 'manual' || isLastRound)) {
+      if (isTeacher && (mode === 'manual' || isLastRound || data.isSkipped)) {
         btnContainer.classList.remove('hidden');
       } else {
         btnContainer.classList.add('hidden');
-        if (isTeacher && !isLastRound) {
+        if (isTeacher && !isLastRound && !data.isSkipped) {
           let delay = 5000;
           if (mode === 'auto8') delay = 8000;
           if (mode === 'auto10') delay = 10000;
           setTimeout(() => {
-            nextRoundByTeacher();
+            if (roomData && roomData.status === 'round_ended' && !roomData.isSkipped) {
+              nextRoundByTeacher();
+            }
           }, delay);
         }
+      }
+    }
+
+    async function skipRoundByTeacher() {
+      if (!isTeacher) return;
+      if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+      
+      const updateData = {
+        status: 'round_ended',
+        solver: null,
+        isSkipped: true,
+        earnedPoints: 0,
+        endMessage: '선생님 스킵'
+      };
+
+      if (window.FirebaseApp && window.FirebaseApp.db && roomCode) {
+        try {
+          const { doc, updateDoc } = window.FirebaseApp;
+          await updateDoc(doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode), updateData);
+        } catch (e) {}
+      } else {
+        roomData = { ...roomData, ...updateData };
+        handleRoomDataUpdate(roomData);
       }
     }
 
