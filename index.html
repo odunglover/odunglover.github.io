@@ -674,6 +674,19 @@
         <div id="modal-room-code" class="text-5xl text-[#ff7a38] tracking-widest font-black">----</div>
       </div>
     </div>
+
+    <!-- 안내 메시지 커스텀 모달 -->
+    <div id="custom-notice-modal" class="hidden fixed inset-0 bg-black/65 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div class="bg-[#fffdf7] border-4 border-[#ff7a38] rounded-3xl p-6 sm:p-7 max-w-sm w-full text-center space-y-4 shadow-2xl animate-slide-up">
+        <span class="text-4xl block">⚠️</span>
+        <p id="custom-notice-text" class="text-base sm:text-lg text-[#234d2b] font-black leading-relaxed whitespace-pre-line">
+          안내 메시지
+        </p>
+        <button onclick="closeCustomNoticeModal()" class="w-full py-3 bg-[#ff7a38] hover:bg-[#e86624] text-white text-base font-bold rounded-2xl shadow border-b-4 border-[#c74c10] transition cursor-pointer">
+          확인
+        </button>
+      </div>
+    </div>
   </main>
 
   <script>
@@ -969,6 +982,14 @@
     }
 
     function selectDrawerMode(mode) {
+      if (mode === 'teacher' && studentList.length < 4) {
+        const msg = studentList.length === 2
+          ? "참여자가 2명이므로 선택이 불가합니다.\n이 선택지는 4명부터 가능합니다."
+          : `현재 참여자가 ${studentList.length}명이므로 선택이 불가합니다.\n이 선택지는 4명부터 가능합니다.`;
+        openCustomNoticeModal(msg);
+        return;
+      }
+
       gameSettings.drawerSelectMode = mode;
       document.querySelectorAll('.drawer-mode-btn').forEach(btn => {
         if (btn.getAttribute('data-value') === mode) {
@@ -979,101 +1000,17 @@
       });
     }
 
-    function renderTimerOptions() {
-      const container = document.getElementById('timer-options');
-      if (!container) return;
-      container.innerHTML = '';
-      let options = [];
-      if (gameSettings.painters === 1) options = [20, 30, 60];
-      else if (gameSettings.painters === 2) options = [15, 20, 30];
-      else if (gameSettings.painters === 3) options = [10, 15, 20];
-
-      gameSettings.timer = options[0];
-
-      options.forEach((sec, idx) => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.onclick = () => selectTimer(sec);
-        btn.setAttribute('data-value', sec);
-        btn.innerText = `${sec}초`;
-        if (idx === 0) {
-          btn.className = "px-3 py-1.5 rounded-xl border border-[#ff7a38] text-xs font-bold text-white bg-[#ff7a38] shadow transition timer-btn";
-        } else {
-          btn.className = "px-3 py-1.5 rounded-xl border border-[#d9c4a5] text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 transition timer-btn";
-        }
-        container.appendChild(btn);
-      });
-    }
-
-    function selectTimer(seconds) {
-      gameSettings.timer = seconds;
-      document.querySelectorAll('.timer-btn').forEach(btn => {
-        if (parseInt(btn.getAttribute('data-value')) === seconds) {
-          btn.className = "px-3 py-1.5 rounded-xl border border-[#ff7a38] text-xs font-bold text-white bg-[#ff7a38] shadow transition timer-btn";
-        } else {
-          btn.className = "px-3 py-1.5 rounded-xl border border-[#d9c4a5] text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 transition timer-btn";
-        }
-      });
-    }
-
-    function selectNextRoundMode(mode) {
-      gameSettings.nextRoundMode = mode;
-      document.querySelectorAll('.next-round-btn').forEach(btn => {
-        if (btn.getAttribute('data-value') === mode) {
-          btn.className = "px-3 py-1.5 rounded-xl border border-[#ff7a38] text-xs font-bold text-white bg-[#ff7a38] shadow transition next-round-btn";
-        } else {
-          btn.className = "px-3 py-1.5 rounded-xl border border-[#d9c4a5] text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 transition next-round-btn";
-        }
-      });
-    }
-
-    function selectHintMode(mode) {
-      gameSettings.hintMode = mode;
-      document.querySelectorAll('.hint-btn').forEach(btn => {
-        if (btn.getAttribute('data-value') === mode) {
-          btn.className = "px-3 py-1.5 rounded-xl border border-[#36b3a0] text-xs font-bold text-white bg-[#36b3a0] shadow transition hint-btn";
-        } else {
-          btn.className = "px-3 py-1.5 rounded-xl border border-[#d9c4a5] text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 transition hint-btn";
-        }
-      });
-    }
-
-    function selectKeywordMode(mode) {
-      gameSettings.keywordMode = mode;
-      document.querySelectorAll('.kw-mode-btn').forEach(btn => {
-        if (btn.getAttribute('data-value') === mode) {
-          btn.className = "px-3 py-1.5 rounded-xl border border-[#ff7a38] text-xs font-bold text-white bg-[#ff7a38] shadow transition kw-mode-btn";
-        } else {
-          btn.className = "px-3 py-1.5 rounded-xl border border-[#d9c4a5] text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 transition kw-mode-btn";
-        }
-      });
-
-      const presetBox = document.getElementById('preset-categories-box');
-      const customBox = document.getElementById('custom-keywords-box');
-      if (mode === 'preset') {
-        presetBox.classList.remove('hidden');
-        customBox.classList.add('hidden');
-      } else {
-        presetBox.classList.add('hidden');
-        customBox.classList.remove('hidden');
-      }
-    }
-
-    function updateSettings() {
-      const checkedBoxes = document.querySelectorAll('input[name="quiz-category"]:checked');
-      gameSettings.categories = Array.from(checkedBoxes).map(cb => cb.value);
-    }
-
-    function openQrModal() {
-      const modal = document.getElementById('qr-modal');
-      if (modal) {
+    function openCustomNoticeModal(message) {
+      const modal = document.getElementById('custom-notice-modal');
+      const textEl = document.getElementById('custom-notice-text');
+      if (modal && textEl) {
+        textEl.innerText = message;
         modal.classList.remove('hidden');
-        renderQrCode('modal-qrcode', roomCode, 220);
       }
     }
 
-    function closeQrModal() {
-      const modal = document.getElementById('qr-modal');
+    function closeCustomNoticeModal() {
+      const modal = document.getElementById('custom-notice-modal');
       if (modal) modal.classList.add('hidden');
     }
 
@@ -1326,6 +1263,10 @@
         studentList = data.students;
         document.getElementById('connected-count').innerText = studentList.length;
 
+        if (studentList.length < 4 && gameSettings.drawerSelectMode === 'teacher') {
+          selectDrawerMode('random');
+        }
+
         const container = document.getElementById('student-list-container');
         if (container) {
           if (studentList.length === 0) {
@@ -1414,7 +1355,11 @@
       selectedDrawerQueue = [];
       const guide = document.getElementById('teacher-select-guide');
       if (guide) {
-        guide.innerHTML = `참여자 중에서 <span class="text-[#ff7a38] font-black">${requiredCount}명</span>을 순서대로 눌러 선택해주세요! (누른 순서대로 그립니다)`;
+        if (requiredCount === 1) {
+          guide.innerHTML = `참여자 중에서 <span class="text-[#ff7a38] font-black">1명</span>을 눌러 선택해주세요!`;
+        } else {
+          guide.innerHTML = `참여자 중에서 <span class="text-[#ff7a38] font-black">${requiredCount}명</span>을 순서대로 눌러 선택해주세요! (누른 순서대로 그립니다)`;
+        }
       }
       renderTeacherSelectStudentList(requiredCount);
       modal.classList.remove('hidden');
@@ -2191,6 +2136,84 @@
       } else {
         await leaveRoom();
       }
+    }
+
+    function renderTimerOptions() {
+      const container = document.getElementById('timer-options');
+      if (!container) return;
+      const times = [15, 20, 30, 45, 60];
+      if (!times.includes(gameSettings.timer)) {
+        gameSettings.timer = 30;
+      }
+      container.innerHTML = times.map(t => {
+        const active = gameSettings.timer === t;
+        return `<button type="button" onclick="selectTimer(${t})" class="px-3 py-1.5 rounded-xl border ${active ? 'border-[#ff7a38] text-white bg-[#ff7a38] shadow' : 'border-[#d9c4a5] text-slate-700 bg-white hover:bg-slate-50'} text-xs font-bold transition timer-btn" data-value="${t}">${t}초</button>`;
+      }).join('');
+    }
+
+    function selectTimer(sec) {
+      gameSettings.timer = sec;
+      renderTimerOptions();
+    }
+
+    function selectNextRoundMode(mode) {
+      gameSettings.nextRoundMode = mode;
+      document.querySelectorAll('.next-round-btn').forEach(btn => {
+        if (btn.getAttribute('data-value') === mode) {
+          btn.className = "px-3 py-1.5 rounded-xl border border-[#ff7a38] text-xs font-bold text-white bg-[#ff7a38] shadow transition next-round-btn";
+        } else {
+          btn.className = "px-3 py-1.5 rounded-xl border border-[#d9c4a5] text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 transition next-round-btn";
+        }
+      });
+    }
+
+    function selectHintMode(mode) {
+      gameSettings.hintMode = mode;
+      document.querySelectorAll('.hint-btn').forEach(btn => {
+        if (btn.getAttribute('data-value') === mode) {
+          btn.className = "px-3 py-1.5 rounded-xl border border-[#36b3a0] text-xs font-bold text-white bg-[#36b3a0] shadow transition hint-btn";
+        } else {
+          btn.className = "px-3 py-1.5 rounded-xl border border-[#d9c4a5] text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 transition hint-btn";
+        }
+      });
+    }
+
+    function selectKeywordMode(mode) {
+      gameSettings.keywordMode = mode;
+      document.querySelectorAll('.kw-mode-btn').forEach(btn => {
+        if (btn.getAttribute('data-value') === mode) {
+          btn.className = "px-3 py-1.5 rounded-xl border border-[#ff7a38] text-xs font-bold text-white bg-[#ff7a38] shadow transition kw-mode-btn";
+        } else {
+          btn.className = "px-3 py-1.5 rounded-xl border border-[#d9c4a5] text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 transition kw-mode-btn";
+        }
+      });
+      const presetBox = document.getElementById('preset-categories-box');
+      const customBox = document.getElementById('custom-keywords-box');
+      if (mode === 'preset') {
+        if (presetBox) presetBox.classList.remove('hidden');
+        if (customBox) customBox.classList.add('hidden');
+      } else {
+        if (presetBox) presetBox.classList.add('hidden');
+        if (customBox) customBox.classList.remove('hidden');
+      }
+    }
+
+    function updateSettings() {
+      const checked = Array.from(document.querySelectorAll('input[name="quiz-category"]:checked')).map(el => el.value);
+      gameSettings.categories = checked.length > 0 ? checked : ["animal"];
+    }
+
+    function openQrModal() {
+      const modal = document.getElementById('qr-modal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        renderQrCode('modal-qrcode', roomCode, 220);
+      }
+    }
+
+    function closeQrModal() {
+      const modal = document.getElementById('qr-modal');
+      if (modal) modal.classList.add('hidden');
     }
 
     window.showTeacherSetup = showTeacherSetup;
