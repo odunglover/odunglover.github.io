@@ -281,6 +281,14 @@
             </div>
 
             <div>
+              <label class="block text-xs text-slate-600 mb-1.5 font-bold">🎯 그리는 참여자 선택</label>
+              <div id="drawer-select-options" class="flex flex-wrap gap-2">
+                <button type="button" onclick="selectDrawerMode('random')" class="px-3 py-1.5 rounded-xl border border-[#ff7a38] text-xs font-bold text-white bg-[#ff7a38] shadow transition drawer-mode-btn" data-value="random">랜덤</button>
+                <button type="button" onclick="selectDrawerMode('teacher')" class="px-3 py-1.5 rounded-xl border border-[#d9c4a5] text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 transition drawer-mode-btn" data-value="teacher">선생님이 선택</button>
+              </div>
+            </div>
+
+            <div>
               <label class="block text-xs text-slate-600 mb-1.5 font-bold">⏱️ 한 사람 시간</label>
               <div id="timer-options" class="flex flex-wrap gap-2"></div>
             </div>
@@ -360,10 +368,13 @@
         ⏳
       </div>
       <div class="space-y-2">
-        <h3 id="student-waiting-teacher-title" class="text-2xl text-[#234d2b] font-black leading-snug">
-          선생님의 방에 접속하였습니다.
+        <p id="student-waiting-teacher-title" class="text-base sm:text-lg text-slate-600 font-bold leading-snug">
+          선생님님의 방에 참여했어요.
+        </p>
+        <h3 id="student-welcome-name-title" class="text-2xl sm:text-3xl text-[#234d2b] font-black leading-snug">
+          학생, 어서오세요.
         </h3>
-        <p class="text-sm text-slate-400 font-bold">
+        <p class="text-sm text-slate-400 font-bold pt-1">
           (선생님이 시작하기 전까지 기다려주세요.)
         </p>
       </div>
@@ -493,6 +504,39 @@
       </div>
     </div>
 
+    <!-- 🎯 선생님 참여자 직접 선택 모달 -->
+    <div id="teacher-select-drawer-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-center justify-center p-4">
+      <div class="bg-[#fffdf7] border-4 border-[#ff7a38] rounded-3xl p-6 sm:p-8 max-w-lg w-full text-center space-y-5 shadow-2xl animate-slide-up">
+        <div>
+          <span class="text-4xl block mb-1">🎯</span>
+          <h3 class="text-2xl sm:text-3xl text-[#234d2b] font-black">그리는 참여자 선택</h3>
+          <p id="teacher-select-guide" class="text-sm text-slate-600 font-bold mt-1">
+            참여자 중에서 <span class="text-[#ff7a38]">1명</span>을 순서대로 눌러 선택해주세요!
+          </p>
+        </div>
+
+        <div id="teacher-select-student-list" class="flex flex-wrap justify-center gap-2.5 p-4 bg-[#fdfbf7] border-2 border-dashed border-[#d9c4a5] rounded-2xl min-h-[110px] max-h-60 overflow-y-auto items-center">
+          <!-- 동적 생성 -->
+        </div>
+
+        <button id="confirm-selected-drawers-btn" onclick="confirmSelectedDrawers()" class="w-full py-4 bg-[#ff7a38] hover:bg-[#e86624] active:scale-95 text-white text-xl font-black rounded-2xl shadow-lg border-b-4 border-[#c74c10] transition cursor-pointer">
+          ✅ 선택
+        </button>
+      </div>
+    </div>
+
+    <!-- ⏳ 학생용: 선생님이 그릴 친구를 고르는 중 대기 오버레이 -->
+    <div id="student-selecting-drawer-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
+      <div class="bg-[#fffdf7] border-4 border-[#36b3a0] rounded-3xl p-8 max-w-md w-full text-center space-y-4 shadow-2xl animate-slide-up">
+        <div class="w-16 h-16 bg-[#e0f2f1] border-2 border-[#80cbc4] rounded-full flex items-center justify-center mx-auto text-3xl animate-bounce">
+          🤔
+        </div>
+        <h3 class="text-xl sm:text-2xl text-[#234d2b] font-black leading-snug">
+          선생님이 그릴 친구를 고르고 있습니다!<br>잠시만 기다려 주세요.
+        </h3>
+      </div>
+    </div>
+
     <!-- 정답 / 라운드 종료 오버레이 모달 -->
     <div id="round-result-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
       <div class="bg-[#fffdf7] border-4 border-[#e5d7c3] rounded-3xl p-6 max-w-2xl w-full relative shadow-2xl space-y-4 animate-slide-up">
@@ -618,12 +662,20 @@
     let gameSettings = { 
       totalRounds: 5, 
       painters: 1, 
+      drawerSelectMode: 'random',
       timer: 30, 
       nextRoundMode: 'manual', 
       hintMode: 'always', 
       keywordMode: 'preset',
       categories: ["animal", "object"] 
     };
+
+    let selectedDrawerQueue = [];
+    let pendingRoundConfig = null;
+    let currentTurnIndex = 0;
+    let turnSwitchTimeout = null;
+    let lastSetupRoundNum = null;
+    let lastSetupDrawerName = null;
 
     let canvas, ctx;
     let isDrawing = false;
@@ -890,6 +942,17 @@
       renderTimerOptions();
     }
 
+    function selectDrawerMode(mode) {
+      gameSettings.drawerSelectMode = mode;
+      document.querySelectorAll('.drawer-mode-btn').forEach(btn => {
+        if (btn.getAttribute('data-value') === mode) {
+          btn.className = "px-3 py-1.5 rounded-xl border border-[#ff7a38] text-xs font-bold text-white bg-[#ff7a38] shadow transition drawer-mode-btn";
+        } else {
+          btn.className = "px-3 py-1.5 rounded-xl border border-[#d9c4a5] text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 transition drawer-mode-btn";
+        }
+      });
+    }
+
     function renderTimerOptions() {
       const container = document.getElementById('timer-options');
       if (!container) return;
@@ -1084,7 +1147,8 @@
           if (snap.exists()) {
             const data = snap.data();
             let targetTeacher = data.teacherName || "선생님";
-            document.getElementById('student-waiting-teacher-title').innerText = `${targetTeacher}의 방에 접속하였습니다.`;
+            document.getElementById('student-waiting-teacher-title').innerText = `${targetTeacher}님의 방에 참여했어요.`;
+            document.getElementById('student-welcome-name-title').innerText = `${studentName}, 어서오세요.`;
 
             let list = data.students || [];
             let scores = data.scores || {};
@@ -1153,6 +1217,28 @@
       goHome();
     }
 
+    async function confirmKickStudent(targetStudent) {
+      if (!isTeacher) return;
+      if (!confirm(`'${targetStudent}' 학생을 정말 추방하시겠습니까?`)) return;
+
+      if (window.FirebaseApp && window.FirebaseApp.db && roomCode) {
+        try {
+          const { doc, getDoc, updateDoc } = window.FirebaseApp;
+          const roomRef = doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode);
+          const snap = await getDoc(roomRef);
+          if (snap.exists()) {
+            let list = snap.data().students || [];
+            let scores = snap.data().scores || {};
+            list = list.filter(s => s !== targetStudent);
+            delete scores[targetStudent];
+            await updateDoc(roomRef, { students: list, scores: scores });
+          }
+        } catch (err) {
+          console.warn("학생 추방 오류:", err);
+        }
+      }
+    }
+
     function listenRoomData(code) {
       if (window.FirebaseApp && window.FirebaseApp.db) {
         const { doc, onSnapshot } = window.FirebaseApp;
@@ -1185,12 +1271,18 @@
 
       // 대기실로 게임 재시작(status === 'lobby')을 한 경우 모든 결과 모달 닫기
       if (data.status === 'lobby') {
-        const finalModal = document.getElementById('final-rank-modal');
-        if (finalModal) finalModal.classList.add('hidden');
-        const resultModal = document.getElementById('round-result-modal');
-        if (resultModal) resultModal.classList.add('hidden');
-        const teacherModal = document.getElementById('teacher-start-modal');
-        if (teacherModal) teacherModal.classList.add('hidden');
+        if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+        if (turnSwitchTimeout) { clearTimeout(turnSwitchTimeout); turnSwitchTimeout = null; }
+        timerStarted = false;
+        isLastSpurt = false;
+        lastSetupRoundNum = null;
+        lastSetupDrawerName = null;
+        introShownForRound = null;
+
+        ['final-rank-modal', 'round-result-modal', 'teacher-start-modal', 'teacher-select-drawer-modal', 'student-selecting-drawer-modal', 'last-spurt-overlay'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.classList.add('hidden');
+        });
 
         if (!isTeacher) {
           showScreen('screen-student-lobby');
@@ -1198,7 +1290,10 @@
       }
 
       if (data.teacherName && !isTeacher) {
-        document.getElementById('student-waiting-teacher-title').innerText = `${data.teacherName}의 방에 접속하였습니다.`;
+        document.getElementById('student-waiting-teacher-title').innerText = `${data.teacherName}님의 방에 참여했어요.`;
+        if (studentName) {
+          document.getElementById('student-welcome-name-title').innerText = `${studentName}, 어서오세요.`;
+        }
       }
 
       if (data.students) {
@@ -1220,10 +1315,25 @@
       }
 
       const forceBtn = document.getElementById('teacher-force-end-btn');
-      if (isTeacher && (data.status === 'playing' || data.status === 'round_ended')) {
+      if (isTeacher && (data.status === 'playing' || data.status === 'round_ended' || data.status === 'selecting_drawer')) {
         if (forceBtn) forceBtn.classList.remove('hidden');
       } else {
         if (forceBtn) forceBtn.classList.add('hidden');
+      }
+
+      if (data.status === 'selecting_drawer') {
+        showScreen('screen-game');
+        if (isTeacher) {
+          document.getElementById('student-selecting-drawer-modal').classList.add('hidden');
+          openTeacherSelectDrawerModal(data.settings?.painters || gameSettings.painters || 1);
+        } else {
+          document.getElementById('teacher-select-drawer-modal').classList.add('hidden');
+          document.getElementById('student-selecting-drawer-modal').classList.remove('hidden');
+        }
+        return;
+      } else {
+        document.getElementById('teacher-select-drawer-modal').classList.add('hidden');
+        document.getElementById('student-selecting-drawer-modal').classList.add('hidden');
       }
 
       if (data.status === 'playing') {
@@ -1238,35 +1348,7 @@
         showFinalRankModal(data.scores || {});
       }
     }
-
-    async function confirmKickStudent(targetStudent) {
-      if (!isTeacher) return;
-      if (!confirm(`'${targetStudent}' 학생을 정말 추방하시겠습니까?`)) return;
-
-      if (window.FirebaseApp && window.FirebaseApp.db && roomCode) {
-        try {
-          const { doc, getDoc, updateDoc } = window.FirebaseApp;
-          const roomRef = doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode);
-          const snap = await getDoc(roomRef);
-          if (snap.exists()) {
-            let list = snap.data().students || [];
-            let scores = snap.data().scores || {};
-            list = list.filter(s => s !== targetStudent);
-            delete scores[targetStudent];
-            await updateDoc(roomRef, { students: list, scores: scores });
-          }
-        } catch (err) {
-          console.warn("학생 추방 오류:", err);
-        }
-      }
-    }
-
-    async function startGameByTeacher() {
-      if (studentList.length < 2) {
-        alert("게임 시작을 위해서는 선생님 외에 참여 학생이 최소 2명 이상 있어야 합니다!\n(현재 참여 학생: " + studentList.length + "명)");
-        return;
-      }
-
+    function pickKeywordAndCategory() {
       let selectedKeyword = "대한민국";
       let categoryName = "기본";
 
@@ -1291,16 +1373,153 @@
         };
         categoryName = catNames[catKey] || "일반";
       }
+      return { selectedKeyword, categoryName };
+    }
 
-      const randomDrawer = studentList[Math.floor(Math.random() * studentList.length)];
+    function pickRandomDrawers(count) {
+      const shuffled = [...studentList].sort(() => Math.random() - 0.5);
+      return shuffled.slice(0, Math.min(count, shuffled.length));
+    }
+
+    function openTeacherSelectDrawerModal(requiredCount) {
+      const modal = document.getElementById('teacher-select-drawer-modal');
+      if (!modal || !modal.classList.contains('hidden')) return;
+
+      selectedDrawerQueue = [];
+      const guide = document.getElementById('teacher-select-guide');
+      if (guide) {
+        guide.innerHTML = `참여자 중에서 <span class="text-[#ff7a38] font-black">${requiredCount}명</span>을 순서대로 눌러 선택해주세요! (누른 순서대로 그립니다)`;
+      }
+      renderTeacherSelectStudentList(requiredCount);
+      modal.classList.remove('hidden');
+    }
+
+    function renderTeacherSelectStudentList(requiredCount) {
+      const container = document.getElementById('teacher-select-student-list');
+      if (!container) return;
+
+      container.innerHTML = studentList.map(s => {
+        const orderIdx = selectedDrawerQueue.indexOf(s);
+        const isSelected = orderIdx !== -1;
+        return `
+          <button type="button" onclick="toggleSelectDrawer('${s}', ${requiredCount})"
+            class="px-4 py-2.5 rounded-2xl text-sm sm:text-base font-black border-2 transition flex items-center gap-2 cursor-pointer ${
+              isSelected
+                ? 'bg-[#ff7a38] text-white border-[#c74c10] shadow-md scale-105'
+                : 'bg-white text-slate-700 border-[#d9c4a5] hover:bg-[#fff3e0]'
+            }">
+            ${isSelected ? `<span class="w-6 h-6 rounded-full bg-white text-[#ff7a38] text-xs flex items-center justify-center font-black">${orderIdx + 1}</span>` : '<span>👤</span>'}
+            <span>${s}</span>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function toggleSelectDrawer(name, requiredCount) {
+      const idx = selectedDrawerQueue.indexOf(name);
+      if (idx !== -1) {
+        selectedDrawerQueue.splice(idx, 1);
+      } else {
+        if (selectedDrawerQueue.length >= requiredCount) {
+          selectedDrawerQueue.shift();
+        }
+        selectedDrawerQueue.push(name);
+      }
+      renderTeacherSelectStudentList(requiredCount);
+    }
+
+    async function confirmSelectedDrawers() {
+      const requiredCount = Math.min(gameSettings.painters || 1, studentList.length);
+      if (selectedDrawerQueue.length !== requiredCount) {
+        alert(`그리는 친구 ${requiredCount}명을 모두 선택해주세요! (현재 ${selectedDrawerQueue.length}명 선택됨)`);
+        return;
+      }
+
+      document.getElementById('teacher-select-drawer-modal').classList.add('hidden');
+
+      const config = pendingRoundConfig || {
+        roundNum: 1,
+        scores: roomData?.scores || {},
+        isFirstRound: true
+      };
+
+      const { selectedKeyword, categoryName } = pickKeywordAndCategory();
+      const firstDrawer = selectedDrawerQueue[0];
+
+      const updateData = {
+        status: 'playing',
+        currentRound: config.roundNum,
+        drawersList: [...selectedDrawerQueue],
+        drawerTurnIndex: 0,
+        drawer: firstDrawer,
+        keyword: selectedKeyword,
+        categoryName: categoryName,
+        strokes: [],
+        chat: [],
+        scores: config.scores,
+        timerStarted: false,
+        settings: gameSettings,
+        showIntro: true
+      };
+
+      pendingRoundConfig = null;
+
+      if (window.FirebaseApp && window.FirebaseApp.db && roomCode) {
+        try {
+          const { doc, updateDoc } = window.FirebaseApp;
+          await updateDoc(doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode), updateData);
+        } catch (err) {
+          console.warn("선택 출제자 시작 오류:", err);
+        }
+      }
+    }
+
+    async function startGameByTeacher() {
+      const requiredPainters = gameSettings.painters || 1;
+      if (studentList.length < Math.max(2, requiredPainters)) {
+        alert(`게임 시작을 위해서는 참여 학생이 최소 ${Math.max(2, requiredPainters)}명 이상 있어야 합니다!\n(현재 참여 학생: ${studentList.length}명)`);
+        return;
+      }
 
       const initialScores = {};
       studentList.forEach(s => { initialScores[s] = 0; });
 
+      // "선생님이 선택" 모드인 경우 참여자 선택 단계로 먼저 진입
+      if (gameSettings.drawerSelectMode === 'teacher') {
+        pendingRoundConfig = {
+          roundNum: 1,
+          scores: initialScores,
+          isFirstRound: true
+        };
+
+        if (window.FirebaseApp && window.FirebaseApp.db && roomCode) {
+          try {
+            const { doc, updateDoc } = window.FirebaseApp;
+            await updateDoc(doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode), {
+              status: 'selecting_drawer',
+              currentRound: 1,
+              scores: initialScores,
+              settings: gameSettings,
+              strokes: [],
+              chat: [],
+              timerStarted: false
+            });
+          } catch (err) {
+            console.warn("출제자 선택 전환 오류:", err);
+          }
+        }
+        return;
+      }
+
+      const { selectedKeyword, categoryName } = pickKeywordAndCategory();
+      const randomDrawers = pickRandomDrawers(requiredPainters);
+
       const updateData = {
         status: 'playing',
         currentRound: 1,
-        drawer: randomDrawer,
+        drawersList: randomDrawers,
+        drawerTurnIndex: 0,
+        drawer: randomDrawers[0],
         keyword: selectedKeyword,
         categoryName: categoryName,
         strokes: [],
@@ -1355,10 +1574,36 @@
       showScreen('screen-game');
       setTimeout(resizeCanvasResolution, 100);
 
+      const roundNum = data.currentRound || 1;
+      const drawerName = data.drawer || '미정';
+
+      // 새 라운드 또는 새 출제자(2~3명 릴레이)로 바뀔 때마다 타이머와 LAST 10초 상태 완전 초기화!
+      if (lastSetupRoundNum !== roundNum || lastSetupDrawerName !== drawerName) {
+        lastSetupRoundNum = roundNum;
+        lastSetupDrawerName = drawerName;
+
+        if (timerInterval) {
+          clearInterval(timerInterval);
+          timerInterval = null;
+        }
+        if (turnSwitchTimeout) {
+          clearTimeout(turnSwitchTimeout);
+          turnSwitchTimeout = null;
+        }
+        timerStarted = false;
+        isLastSpurt = false;
+        const lastSpurtEl = document.getElementById('last-spurt-overlay');
+        if (lastSpurtEl) lastSpurtEl.classList.add('hidden');
+
+        const baseSec = data.settings?.timer || gameSettings.timer || 30;
+        remainingTime = baseSec;
+        updateTimerDisplay(baseSec);
+      }
+
       document.getElementById('game-room-code-display').innerText = roomCode;
-      document.getElementById('game-drawer-name-display').innerText = data.drawer || '미정';
-      document.getElementById('status-current-drawer').innerText = data.drawer || '미정';
-      document.getElementById('game-round-info').innerText = `${data.currentRound || 1} / ${data.settings?.totalRounds || 5}`;
+      document.getElementById('game-drawer-name-display').innerText = drawerName;
+      document.getElementById('status-current-drawer').innerText = drawerName;
+      document.getElementById('game-round-info').innerText = `${roundNum} / ${data.settings?.totalRounds || 5}`;
 
       const kwDisplay = document.getElementById('game-keyword-display');
       const chatInputContainer = document.getElementById('chat-input-container');
@@ -1370,11 +1615,14 @@
         chatInputContainer.classList.add('hidden');
 
         // 선생님용 라운드 시작 팝업: 라운드당 오직 1번만 뜨도록 라운드키 체크 및 DB showIntro 갱신
-        const teacherRoundKey = `round_${data.currentRound || 1}`;
+        const teacherRoundKey = `round_${roundNum}`;
         if (data.showIntro && introShownForRound !== teacherRoundKey) {
           introShownForRound = teacherRoundKey;
+          const drawersDisplay = (data.drawersList && data.drawersList.length > 1)
+            ? data.drawersList.join(' ➔ ')
+            : (data.drawer || '');
           document.getElementById('teacher-modal-keyword').innerText = data.keyword || '';
-          document.getElementById('teacher-modal-drawer').innerText = data.drawer || '';
+          document.getElementById('teacher-modal-drawer').innerText = drawersDisplay;
           document.getElementById('teacher-start-modal').classList.remove('hidden');
 
           if (window.FirebaseApp && window.FirebaseApp.db && roomCode) {
@@ -1384,11 +1632,21 @@
         }
       } else {
         chatInputContainer.classList.remove('hidden');
-        if (studentName === data.drawer) {
+        const isMyTurnToDraw = (studentName === data.drawer);
+        const amIInDrawerGroup = (data.drawersList || [data.drawer]).includes(studentName);
+
+        if (isMyTurnToDraw) {
           kwDisplay.innerHTML = `${data.keyword} <span class="text-rose-600 font-black text-base">(내가 그릴 차례!)</span>`;
+        } else if (amIInDrawerGroup) {
+          kwDisplay.innerHTML = `${data.keyword} <span class="text-amber-600 font-black text-base">(함께 그리는 출제자!)</span>`;
+        } else {
+          kwDisplay.innerText = '???';
+        }
+
+        if (amIInDrawerGroup) {
           if (chatInput) {
             chatInput.disabled = true;
-            chatInput.placeholder = "🎨 그림을 그리는 중에는 채팅을 입력할 수 없습니다.";
+            chatInput.placeholder = "🎨 출제자는 채팅을 입력할 수 없습니다.";
             chatInput.classList.add('bg-slate-100', 'cursor-not-allowed');
           }
           if (chatSendBtn) {
@@ -1396,7 +1654,6 @@
             chatSendBtn.classList.add('opacity-50', 'cursor-not-allowed');
           }
         } else {
-          kwDisplay.innerText = '???';
           if (chatInput) {
             chatInput.disabled = false;
             chatInput.placeholder = "정답을 입력하세요...";
@@ -1448,7 +1705,7 @@
         }
       }
 
-      const currentRoundKey = `${data.currentRound || 1}_${data.drawer}`;
+      const currentRoundKey = `${roundNum}_${data.drawer}_${data.drawerTurnIndex || 0}`;
       if (data.showIntro && introShownForRound !== currentRoundKey) {
         introShownForRound = currentRoundKey;
         const overlay = document.getElementById('drawer-intro-overlay');
@@ -1480,29 +1737,63 @@
     }
 
     function startLocalTimer() {
-      if (timerInterval) clearInterval(timerInterval);
-      remainingTime = roomData?.settings?.timer || 30;
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+      remainingTime = roomData?.settings?.timer || gameSettings.timer || 30;
       updateTimerDisplay(remainingTime);
 
       isLastSpurt = false;
-      document.getElementById('last-spurt-overlay').classList.add('hidden');
+      const lastSpurtEl = document.getElementById('last-spurt-overlay');
+      if (lastSpurtEl) lastSpurtEl.classList.add('hidden');
 
       timerInterval = setInterval(() => {
+        if (!roomData || roomData.status !== 'playing') {
+          clearInterval(timerInterval);
+          timerInterval = null;
+          return;
+        }
+
         remainingTime--;
         
         if (remainingTime > 0) {
           updateTimerDisplay(remainingTime);
         } else if (remainingTime <= 0 && !isLastSpurt) {
+          const drawersList = roomData?.drawersList || [roomData?.drawer];
+          const turnIdx = roomData?.drawerTurnIndex || 0;
+
+          // 2명 이상 그리는 설정에서 아직 다음 순번 출제자가 남아있다면 다음 사람에게 턴 넘기기
+          if (turnIdx + 1 < drawersList.length) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            stopDrawing();
+            if (isTeacher && window.FirebaseApp && window.FirebaseApp.db && roomCode) {
+              const nextIdx = turnIdx + 1;
+              const nextPainter = drawersList[nextIdx];
+              const { doc, updateDoc } = window.FirebaseApp;
+              updateDoc(doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode), {
+                drawerTurnIndex: nextIdx,
+                drawer: nextPainter,
+                timerStarted: false,
+                showIntro: true
+              }).catch(() => {});
+            }
+            return;
+          }
+
+          // 마지막 출제자까지 시간을 다 쓴 경우 LAST 10초 돌입
           isLastSpurt = true;
           remainingTime = 10;
           updateTimerDisplay(remainingTime);
-          document.getElementById('last-spurt-overlay').classList.remove('hidden');
+          if (lastSpurtEl) lastSpurtEl.classList.remove('hidden');
           const palette = document.getElementById('palette-toolbar');
           if (palette) palette.classList.add('opacity-40', 'pointer-events-none');
           stopDrawing();
         } else if (remainingTime <= 0 && isLastSpurt) {
           clearInterval(timerInterval);
-          document.getElementById('last-spurt-overlay').classList.add('hidden');
+          timerInterval = null;
+          if (lastSpurtEl) lastSpurtEl.classList.add('hidden');
           if (isTeacher) endRound(null, '시간 초과!', 0);
         }
       }, 1000);
@@ -1592,8 +1883,14 @@
     }
 
     async function endRound(solverName, message, points = 0) {
-      if (timerInterval) clearInterval(timerInterval);
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
       timerStarted = false;
+      isLastSpurt = false;
+      const lastSpurtEl = document.getElementById('last-spurt-overlay');
+      if (lastSpurtEl) lastSpurtEl.classList.add('hidden');
 
       const scores = roomData?.scores || {};
       if (solverName) {
@@ -1622,8 +1919,14 @@
     }
 
     function showRoundResultModal(data) {
-      if (timerInterval) clearInterval(timerInterval);
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
       timerStarted = false;
+      isLastSpurt = false;
+      const lastSpurtEl = document.getElementById('last-spurt-overlay');
+      if (lastSpurtEl) lastSpurtEl.classList.add('hidden');
 
       const modal = document.getElementById('round-result-modal');
       if (!modal) return;
@@ -1700,6 +2003,15 @@
       const modal = document.getElementById('round-result-modal');
       if (modal) modal.classList.add('hidden');
 
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+      timerStarted = false;
+      isLastSpurt = false;
+      const lastSpurtEl = document.getElementById('last-spurt-overlay');
+      if (lastSpurtEl) lastSpurtEl.classList.add('hidden');
+
       const currentRoundNum = roomData?.currentRound || 1;
       const totalRounds = roomData?.settings?.totalRounds || 5;
 
@@ -1715,46 +2027,49 @@
         return;
       }
 
-      let selectedKeyword = "대한민국";
-      let categoryName = "기본";
-
-      if (gameSettings.keywordMode === 'custom') {
-        const raw = document.getElementById('custom-keywords-input').value.trim();
-        if (raw) {
-          const list = raw.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
-          if (list.length > 0) {
-            selectedKeyword = list[Math.floor(Math.random() * list.length)];
-            categoryName = "직접 입력";
-          }
-        }
-      } else {
-        const cats = (gameSettings.categories && gameSettings.categories.length > 0) ? gameSettings.categories : ["animal"];
-        const catKey = cats[Math.floor(Math.random() * cats.length)];
-        const pool = keywordPresets[catKey] || ["사과"];
-        selectedKeyword = pool[Math.floor(Math.random() * pool.length)];
-
-        const catNames = {
-          animal: "동물/식물", object: "학용품/사물", history: "역사/문화재", food: "음식/간식",
-          sports: "스포츠/운동", jobs: "직업/인물", places: "장소/건물", nature: "자연/우주"
-        };
-        categoryName = catNames[catKey] || "일반";
-      }
-
-      let nextDrawer = "";
-      if (studentList.length === 2) {
-        const prevDrawer = roomData?.drawer;
-        nextDrawer = studentList.find(s => s !== prevDrawer) || studentList[0];
-      } else {
-        nextDrawer = studentList[Math.floor(Math.random() * studentList.length)];
-      }
-
       const nextRoundNum = currentRoundNum + 1;
-      timerStarted = false;
+      const mode = roomData?.settings?.drawerSelectMode || gameSettings.drawerSelectMode || 'random';
+      const requiredPainters = roomData?.settings?.painters || gameSettings.painters || 1;
+
+      // "선생님이 선택" 모드인 경우 다음 라운드 시작 전에도 선생님이 출제자를 고를 수 있도록 모달 띄우기
+      if (mode === 'teacher') {
+        pendingRoundConfig = {
+          roundNum: nextRoundNum,
+          scores: roomData?.scores || {},
+          isFirstRound: false
+        };
+
+        if (window.FirebaseApp && window.FirebaseApp.db && roomCode) {
+          try {
+            const { doc, updateDoc } = window.FirebaseApp;
+            await updateDoc(doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode), {
+              status: 'selecting_drawer',
+              currentRound: nextRoundNum,
+              strokes: [],
+              chat: [],
+              timerStarted: false
+            });
+          } catch (err) {}
+        }
+        return;
+      }
+
+      const { selectedKeyword, categoryName } = pickKeywordAndCategory();
+      let randomDrawers = [];
+      if (studentList.length === 2 && requiredPainters === 1) {
+        const prevDrawer = roomData?.drawer;
+        const alt = studentList.find(s => s !== prevDrawer) || studentList[0];
+        randomDrawers = [alt];
+      } else {
+        randomDrawers = pickRandomDrawers(requiredPainters);
+      }
 
       const updateData = {
         status: 'playing',
         currentRound: nextRoundNum,
-        drawer: nextDrawer,
+        drawersList: randomDrawers,
+        drawerTurnIndex: 0,
+        drawer: randomDrawers[0],
         keyword: selectedKeyword,
         categoryName: categoryName,
         strokes: [],
@@ -1864,6 +2179,7 @@
     window.goHome = goHome;
     window.selectRounds = selectRounds;
     window.selectPainters = selectPainters;
+    window.selectDrawerMode = selectDrawerMode;
     window.selectTimer = selectTimer;
     window.selectNextRoundMode = selectNextRoundMode;
     window.selectHintMode = selectHintMode;
@@ -1872,6 +2188,8 @@
     window.openQrModal = openQrModal;
     window.closeQrModal = closeQrModal;
     window.startGameByTeacher = startGameByTeacher;
+    window.toggleSelectDrawer = toggleSelectDrawer;
+    window.confirmSelectedDrawers = confirmSelectedDrawers;
     window.nextRoundByTeacher = nextRoundByTeacher;
     window.handleFinalAction = handleFinalAction;
     window.confirmKickStudent = confirmKickStudent;
