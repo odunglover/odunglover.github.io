@@ -510,6 +510,12 @@
           <div id="role-status-bar" class="hidden bg-[#dff0d8] border border-[#b2dba1] text-[#2e7d32] rounded-2xl p-3.5 text-center text-sm shadow-sm">
             <span>✏️ 지금은 네가 그림을 그릴 차례야!</span>
           </div>
+
+          <div id="teacher-skip-bar" class="hidden">
+            <button id="skip-round-btn" onclick="skipRoundByTeacher()" class="w-full py-3.5 bg-amber-600 hover:bg-amber-700 text-white text-lg rounded-2xl shadow-lg border-b-4 border-amber-800 transition cursor-pointer">
+              ⏭️ 정답 공개 및 스킵
+            </button>
+          </div>
         </div>
       </div>
     </section>
@@ -591,9 +597,6 @@
         </div>
 
         <div id="next-round-btn-container" class="pt-1">
-        <button id="skip-round-btn" onclick="skipRoundByTeacher()" class="w-full py-3.5 bg-amber-600 hover:bg-amber-700 text-white text-lg rounded-2xl shadow-lg border-b-4 border-amber-800 transition mb-2">
-          ⏭️ 정답 공개 및 스킵
-        </button>
         <button id="next-round-action-btn" onclick="nextRoundByTeacher()" class="w-full py-3.5 bg-[#ff7a38] hover:bg-[#e86624] text-white text-lg rounded-2xl shadow-lg border-b-4 border-[#c74c10] transition">
           ➡️ 다음 라운드로 넘기기
         </button>
@@ -1042,7 +1045,10 @@
 
     async function createTeacherRoom() {
       const nameInput = document.getElementById('teacher-name-input').value.trim();
-      if (!nameInput) { alert("선생님 이름을 입력해주세요."); return; }
+      if (!nameInput) {
+        openCustomNoticeModal("선생님 이름을 입력해주세요.");
+        return;
+      }
 
       isTeacher = true;
       teacherName = nameInput;
@@ -1094,8 +1100,14 @@
       const nameInput = document.getElementById('student-name-input').value.trim();
       const codeInput = document.getElementById('student-room-input').value.trim();
 
-      if (!nameInput) { alert("학생 이름을 입력해주세요."); return; }
-      if (!codeInput || codeInput.length !== 4) { alert("올바른 숫자 4자리 방 코드를 입력해주세요."); return; }
+      if (!nameInput) {
+        openCustomNoticeModal("학생 이름을 입력해주세요.");
+        return;
+      }
+      if (!codeInput || codeInput.length !== 4) {
+        openCustomNoticeModal("올바른 숫자 4자리 방 코드를 입력해주세요.");
+        return;
+      }
 
       isTeacher = false;
       studentName = nameInput;
@@ -1124,7 +1136,7 @@
             }
             await updateDoc(roomRef, { students: list, scores: scores });
           } else {
-            alert("존재하지 않는 방 코드입니다. 다시 확인해주세요!");
+            openCustomNoticeModal("존재하지 않는 방 코드입니다. 다시 확인해주세요!");
             return;
           }
         } catch (e) {
@@ -1137,8 +1149,6 @@
     }
 
     async function closeRoomByTeacher() {
-      if (!confirm("정말 방을 닫으시겠습니까? 모든 학생 접속이 종료됩니다.")) return;
-
       if (window.FirebaseApp && window.FirebaseApp.db && roomCode) {
         try {
           const { doc, updateDoc } = window.FirebaseApp;
@@ -1154,7 +1164,6 @@
 
     async function forceEndGameByTeacher() {
       if (!isTeacher) return;
-      if (!confirm("현재 진행 중인 게임을 강제 종료하고 최종 결과로 이동하시겠습니까?")) return;
       if (window.FirebaseApp && window.FirebaseApp.db && roomCode) {
         try {
           const { doc, updateDoc } = window.FirebaseApp;
@@ -1185,7 +1194,6 @@
 
     async function confirmKickStudent(targetStudent) {
       if (!isTeacher) return;
-      if (!confirm(`'${targetStudent}' 학생을 정말 추방하시겠습니까?`)) return;
 
       if (window.FirebaseApp && window.FirebaseApp.db && roomCode) {
         try {
@@ -1222,14 +1230,14 @@
 
     function handleRoomDataUpdate(data, prevStrokesCount = 0) {
       if (data.status === 'closed') {
-        alert("선생님이 방을 종료하셨습니다.");
+        openCustomNoticeModal("선생님이 방을 종료하셨습니다.");
         if (roomUnsubscribe) roomUnsubscribe();
         goHome();
         return;
       }
 
       if (!isTeacher && studentName && data.students && !data.students.includes(studentName)) {
-        alert("선생님에 의해 방에서 추방되었습니다.");
+        openCustomNoticeModal("선생님에 의해 방에서 추방되었습니다.");
         if (roomUnsubscribe) roomUnsubscribe();
         goHome();
         return;
@@ -1318,6 +1326,7 @@
         showFinalRankModal(data.scores || {});
       }
     }
+
     function pickKeywordAndCategory() {
       let selectedKeyword = "대한민국";
       let categoryName = "기본";
@@ -1405,7 +1414,7 @@
     async function confirmSelectedDrawers() {
       const requiredCount = Math.min(gameSettings.painters || 1, studentList.length);
       if (selectedDrawerQueue.length !== requiredCount) {
-        alert(`그리는 친구 ${requiredCount}명을 모두 선택해주세요! (현재 ${selectedDrawerQueue.length}명 선택됨)`);
+        openCustomNoticeModal(`그리는 친구 ${requiredCount}명을 모두 선택해주세요! (현재 ${selectedDrawerQueue.length}명 선택됨)`);
         return;
       }
 
@@ -1423,6 +1432,7 @@
       const updateData = {
         status: 'playing',
         currentRound: config.roundNum,
+        isSkipped: false,
         drawersList: [...selectedDrawerQueue],
         drawerTurnIndex: 0,
         drawer: firstDrawer,
@@ -1451,7 +1461,7 @@
     async function startGameByTeacher() {
       const requiredPainters = gameSettings.painters || 1;
       if (studentList.length < Math.max(2, requiredPainters)) {
-        alert(`게임 시작을 위해서는 참여 학생이 최소 ${Math.max(2, requiredPainters)}명 이상 있어야 합니다!\n(현재 참여 학생: ${studentList.length}명)`);
+        openCustomNoticeModal(`게임 시작을 위해서는 참여 학생이 최소 ${Math.max(2, requiredPainters)}명 이상 있어야 합니다!\n(현재 참여 학생: ${studentList.length}명)`);
         return;
       }
 
@@ -1491,6 +1501,7 @@
       const updateData = {
         status: 'playing',
         currentRound: 1,
+        isSkipped: false,
         drawersList: randomDrawers,
         drawerTurnIndex: 0,
         drawer: randomDrawers[0],
@@ -1666,6 +1677,15 @@
         roleBar.classList.remove('hidden');
       } else {
         roleBar.classList.add('hidden');
+      }
+
+      const teacherSkipBar = document.getElementById('teacher-skip-bar');
+      if (teacherSkipBar) {
+        if (isTeacher && data.status === 'playing') {
+          teacherSkipBar.classList.remove('hidden');
+        } else {
+          teacherSkipBar.classList.add('hidden');
+        }
       }
 
       renderChatMessages(data.chat || []);
@@ -1938,21 +1958,15 @@
         }
       }, 50);
 
+      const teacherSkipBar = document.getElementById('teacher-skip-bar');
+      if (teacherSkipBar) teacherSkipBar.classList.add('hidden');
+
       const btnContainer = document.getElementById('next-round-btn-container');
       const actionBtn = document.getElementById('next-round-action-btn');
-      const skipBtn = document.getElementById('skip-round-btn');
       const mode = data.settings?.nextRoundMode || 'manual';
       const currentRoundNum = data.currentRound || 1;
       const totalRounds = data.settings?.totalRounds || 5;
       const isLastRound = currentRoundNum >= totalRounds;
-
-      if (skipBtn) {
-        if (isTeacher && !data.isSkipped && !isLastRound) {
-          skipBtn.classList.remove('hidden');
-        } else {
-          skipBtn.classList.add('hidden');
-        }
-      }
 
       if (isLastRound) {
         actionBtn.innerText = "🏆 최종 랭킹 보기";
@@ -2086,6 +2100,7 @@
         categoryName: categoryName,
         strokes: [],
         chat: [],
+        isSkipped: false,
         timerStarted: false,
         showIntro: true
       };
@@ -2163,6 +2178,7 @@
             await updateDoc(doc(window.FirebaseApp.db, 'catchmind_rooms', roomCode), {
               status: 'lobby',
               currentRound: 1,
+              isSkipped: false,
               strokes: [],
               chat: [],
               scores: resetScores,
@@ -2280,6 +2296,7 @@
     window.startGameByTeacher = startGameByTeacher;
     window.toggleSelectDrawer = toggleSelectDrawer;
     window.confirmSelectedDrawers = confirmSelectedDrawers;
+    window.skipRoundByTeacher = skipRoundByTeacher;
     window.nextRoundByTeacher = nextRoundByTeacher;
     window.handleFinalAction = handleFinalAction;
     window.confirmKickStudent = confirmKickStudent;
@@ -2287,6 +2304,7 @@
     window.setEraserMode = setEraserMode;
     window.triggerClearCanvas = triggerClearCanvas;
     window.sendChat = sendChat;
+    window.closeCustomNoticeModal = closeCustomNoticeModal;
   </script>
 </body>
 </html>
